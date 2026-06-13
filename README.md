@@ -18,7 +18,7 @@ To prevent false alarms from operational activity (like an excavator removing co
 
 1. Clone this repository:
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/IqbaltopG/SpontaneosCombustion_Volumetric3D-and-sensor
    cd kic_kideco_3dvolumetrik_oakDlite
    ```
 
