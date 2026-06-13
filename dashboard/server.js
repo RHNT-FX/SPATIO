@@ -62,8 +62,8 @@ io.on('connection', (socket) => {
         let dummyData = {
             status: "NORMAL_STABLE",
             confidence: "SIMULASI_MANUAL",
-            volume_loss_detected: true, // Asumsikan ada deformasi agar peringatan bahaya bisa menyala penuh
-            max_subsidence_mm: 50.5,
+            volume_loss_detected: false, // Set false saat offline
+            max_subsidence_mm: null,     // Set null agar UI menampilkan "Kamera Offline"
             mock_sensors: {
                 temperature_c: overrides.temperature_c !== null ? overrides.temperature_c : 35,
                 co_ppm: overrides.co_ppm !== null ? overrides.co_ppm : 120

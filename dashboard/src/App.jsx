@@ -66,17 +66,17 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 text-white p-2 rounded-lg">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+        <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-600 text-white p-2.5 rounded-lg">
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-800 leading-tight">Sistem Pemantauan Swabakar</h1>
-              <p className="text-xs text-slate-500 font-medium">Dashboard Integrasi IoT & OAK-D Lite</p>
+              <h1 className="text-2xl font-bold text-slate-800 leading-tight">Sistem Pemantauan Swabakar</h1>
+              <p className="text-sm text-slate-500 font-medium">Dashboard Integrasi IoT & OAK-D Lite</p>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-4 text-sm font-medium text-slate-600">
+          <div className="hidden md:flex items-center gap-5 text-base font-medium text-slate-600">
             <span className="flex items-center gap-1.5">
               <span className="relative flex h-2.5 w-2.5">
                 {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
@@ -90,10 +90,10 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start flex-grow">
+      <main className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start flex-grow">
         
         {/* Left Column: Data & Analytics */}
-        <section className="lg:col-span-4 flex flex-col gap-6">
+        <section className="lg:col-span-3 flex flex-col gap-6">
           
           <div className={`rounded-xl p-5 border flex items-start gap-4 shadow-sm transition-colors duration-300 ${riskClasses[riskLevel]}`}>
             <div className="shrink-0 mt-0.5">{riskIcons[riskLevel]}</div>
@@ -160,12 +160,18 @@ function App() {
                     </span>
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-slate-800">{deformation.toFixed(1)}</span>
-                    <span className="text-sm font-semibold text-slate-500">mm</span>
+                    {deformation === null ? (
+                        <span className="text-base font-bold text-slate-400">Kamera Offline</span>
+                    ) : (
+                        <>
+                            <span className="text-3xl font-bold text-slate-800">{deformation.toFixed(1)}</span>
+                            <span className="text-sm font-semibold text-slate-500">mm</span>
+                        </>
+                    )}
                   </div>
                 </div>
                 <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-500 transition-all duration-500 rounded-full" style={{width: `${Math.min((deformation/50)*100, 100)}%`}}></div>
+                  <div className={`h-full transition-all duration-500 rounded-full ${deformation === null ? 'bg-slate-300' : 'bg-blue-500'}`} style={{width: `${deformation === null ? 0 : Math.min((deformation/50)*100, 100)}%`}}></div>
                 </div>
               </div>
             </div>
@@ -173,7 +179,7 @@ function App() {
         </section>
 
         {/* Right Column: Camera & Livestream */}
-        <section className="lg:col-span-8 flex flex-col gap-4">
+        <section className="lg:col-span-9 flex flex-col gap-4">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 flex-grow flex flex-col">
             
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -203,26 +209,37 @@ function App() {
               </div>
             </div>
 
-            <div className="relative w-full aspect-video bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center overflow-hidden group">
-                <div className="bg-white p-4 rounded-full shadow-sm mb-4 text-slate-400 group-hover:scale-110 group-hover:text-blue-500 transition-all duration-300">
-                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                  </svg>
-                </div>
+            {/* Video Livestream Player */}
+            <div className="relative w-full aspect-video bg-black rounded-xl flex flex-col items-center justify-center overflow-hidden shadow-inner">
                 
-                <h3 className="text-lg font-bold text-slate-700 mb-1">
-                  Area Livestream Sedang Menunggu Kamera
-                </h3>
-                <p className="text-sm text-slate-500 max-w-md text-center">
-                  Web Socket terhubung! Menerima data telemetri dari OAK-D Lite. Livestream video akan tampil di sini saat kamera dinyalakan.
-                </p>
+                {isConnected ? (
+                  <img 
+                    src="http://localhost:5000/video_feed" 
+                    alt="OAK-D Live Stream" 
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
 
-                <div className="absolute top-4 left-4 bg-white/80 backdrop-blur border border-slate-200 px-3 py-1.5 rounded-md text-xs font-medium text-slate-600 flex items-center gap-2 shadow-sm">
+                {/* Fallback Error / Placeholder */}
+                <div className={`absolute inset-0 flex flex-col items-center justify-center bg-slate-900 ${isConnected ? 'hidden' : 'flex'}`}>
+                  <svg className="w-12 h-12 text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path>
+                  </svg>
+                  <p className="text-slate-400 text-sm font-medium">Video Stream Offline</p>
+                  <p className="text-slate-500 text-xs mt-1">Pastikan skrip Python Edge AI sedang berjalan</p>
+                </div>
+
+                {/* Status Overlay */}
+                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur border border-slate-200 px-3 py-1.5 rounded-md text-xs font-medium text-slate-700 flex items-center gap-2 shadow-md">
                     <span className="relative flex h-2.5 w-2.5">
                       {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
                       <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isConnected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                     </span>
-                    {isConnected ? 'Menerima Data Telemetri...' : 'Koneksi Terputus'}
+                    {isConnected ? 'LIVE - OAK-D Lite' : 'Koneksi Terputus'}
                 </div>
             </div>
 
