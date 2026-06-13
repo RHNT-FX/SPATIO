@@ -75,14 +75,4 @@ python volumetric_core.py --mock --endpoint http://localhost:3000/api/data
 
 *(Ganti `localhost` dengan IP Laptop tujuan jika dijalankan dari alat/komputer yang berbeda dalam satu jaringan WiFi)*
 
----
-
-## 🤝 Kolaborasi Git
-Karena semua kode berada dalam satu repositori (*monorepo*):
-- Tim Dashboard **hanya fokus** bekerja pada file-file di dalam folder `dashboard/`.
-- Tim AI/Kamera **hanya fokus** bekerja pada file-file di dalam folder `spatio_camera/`.
-
-Saat melakukan perubahan, *commit* bagian Anda masing-masing agar mudah dilacak saat di-gabung (*merge*).
-
----
 *© 2026 Tim Integrasi AI-IoT Kalimantan - Karya diikutsertakan untuk Kideco Innovation Challenge.*
