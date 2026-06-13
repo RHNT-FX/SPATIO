@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KIC 2026 - Stockpile Spontaneous Combustion Simulator</title>
+    <!-- Tailwind CSS for modern premium dashboard styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+        }
+        .custom-glow {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+        }
+        .spatial-grid {
+            background-size: 20px 20px;
+            background-image: linear-gradient(to right, rgba(6, 182, 212, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(6, 182, 212, 0.05) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col justify-between">
+
+    <!-- Header Section -->
+    <header class="max-w-7xl w-full mx-auto mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-4">
+        <div>
+            <div class="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-widest">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                Kideco Innovation Challenge 2026 - Prototype Category
+            </div>
+            <h1 class="text-2xl md:text-3xl font-extrabold text-slate-100 tracking-tight mt-1">
+                Spatio-Temporal Stockpile Coal Combustion Simulator
+            </h1>
+            <p class="text-sm text-slate-400 mt-1">
+                Visualisasi interaktif termal spasial dan deteksi dini swabakar menggunakan OAK-D Lite & IoT
+            </p>
+        </div>
+        <div class="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs">
+            <div class="text-right">
+                <span class="block text-slate-400 font-medium">Pengusul Sistem</span>
+                <span class="font-bold text-slate-200">Tim Integrasi AI-IoT Kalimantan</span>
+            </div>
+            <div class="w-8 h-8 rounded-lg bg-cyan-950 flex items-center justify-center text-cyan-400 font-bold border border-cyan-800">
+                3D
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch flex-grow">
+        
+        <!-- Left Column: Controls & Dynamic Analysis (4 Cols) -->
+        <section class="lg:col-span-4 flex flex-col gap-6 justify-between">
+            
+            <!-- Parameters Card -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 backdrop-blur-md">
+                <h2 class="text-md font-bold text-slate-200 flex items-center gap-2 mb-4 border-b border-slate-800 pb-2">
+                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    Parameter Operasional
+                </h2>
+                
+                <!-- Parameter: Days Stored -->
+                <div class="mb-4">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-400">Durasi Penyimpanan (Hari)</span>
+                        <span class="text-cyan-400 font-semibold" id="daysValue">15 Hari</span>
+                    </div>
+                    <input type="range" id="daysSlider" min="1" max="60" value="15" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                    <span class="text-[10px] text-slate-500 block mt-0.5">Makin lama batu bara ditimbun, akumulasi panas makin tinggi.</span>
+                </div>
+
+                <!-- Parameter: Wind Speed -->
+                <div class="mb-4">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-400">Kecepatan Angin Luar</span>
+                        <span class="text-cyan-400 font-semibold" id="windValue">Sedang (12 km/h)</span>
+                    </div>
+                    <input type="range" id="windSlider" min="0" max="30" value="12" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                    <span class="text-[10px] text-slate-500 block mt-0.5">Angin membawa oksigen, namun angin kencang juga mendinginkan permukaan luar.</span>
+                </div>
+
+                <!-- Parameter: Coal Porosity -->
+                <div class="mb-2">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-400">Kepadatan Batu Bara (Porositas)</span>
+                        <span class="text-cyan-400 font-semibold" id="porosityValue">Sedang (Pori-pori Longgar)</span>
+                    </div>
+                    <input type="range" id="porositySlider" min="10" max="90" value="50" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                    <span class="text-[10px] text-slate-500 block mt-0.5">Batu bara yang renggang memudahkan oksigen menyusup ke zona kritis dalam.</span>
+                </div>
+            </div>
+
+            <!-- Precursor Sensors Display -->
+            <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 backdrop-blur-md">
+                <h2 class="text-md font-bold text-slate-200 flex items-center gap-2 mb-4 border-b border-slate-800 pb-2">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    Sensor Precursor & Analitik
+                </h2>
+                
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <!-- Temp Indicator -->
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block">Suhu Maks Internal</span>
+                        <div class="flex items-baseline gap-1 mt-1">
+                            <span class="text-lg font-extrabold" id="internalTempDisplay">74.5</span>
+                            <span class="text-xs text-rose-500 font-semibold">°C</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1 rounded-full mt-2 overflow-hidden">
+                            <div class="h-full bg-rose-500 transition-all duration-300" id="tempProgressBar" style="width: 74%;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Gas indicator -->
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 block">Kadar Gas CO</span>
+                        <div class="flex items-baseline gap-1 mt-1">
+                            <span class="text-lg font-extrabold" id="coGasDisplay">28</span>
+                            <span class="text-xs text-amber-500 font-semibold">ppm</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1 rounded-full mt-2 overflow-hidden">
+                            <div class="h-full bg-amber-500 transition-all duration-300" id="coProgressBar" style="width: 28%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Deformation indicator -->
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 col-span-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] text-slate-400 block">Deformasi Permukaan (OAK-D)</span>
+                            <span class="text-[10px] text-cyan-400 font-bold" id="deformationStatus">Normal</span>
+                        </div>
+                        <div class="flex items-baseline gap-1 mt-1">
+                            <span class="text-md font-bold text-slate-200" id="deformationValue">0.4 mm</span>
+                            <span class="text-[10px] text-slate-500">(Z-axis shift)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Status Banner -->
+                <div class="rounded-xl p-3 flex items-center gap-3" id="riskBanner">
+                    <span class="w-3 h-3 rounded-full animate-ping shrink-0" id="statusDot"></span>
+                    <div>
+                        <div class="text-xs font-bold" id="statusText">Resiko Sedang (Awas)</div>
+                        <div class="text-[10px] text-slate-300" id="statusDesc">Oksidasi aktif di Zona 2. Memerlukan pengawasan termal kontinu.</div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Center Column: Main Interactive Simulator Rendering (8 Cols) -->
+        <section class="lg:col-span-8 flex flex-col gap-4">
+            
+            <!-- Visualization Canvas Card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 flex-grow flex flex-col justify-between relative overflow-hidden spatial-grid">
+                
+                <!-- View Mode Selectors -->
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-4 z-10">
+                    <span class="text-sm font-bold text-slate-300">Mode Tampilan Kamera / Sensor:</span>
+                    <div class="flex bg-slate-950 border border-slate-800 rounded-xl p-1 gap-1">
+                        <button onclick="changeView('normal')" id="btn-view-normal" class="view-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-cyan-900/50 text-cyan-400 border border-cyan-800">
+                            RGB Normal View
+                        </button>
+                        <button onclick="changeView('thermal')" id="btn-view-thermal" class="view-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition-all">
+                            Thermal (Inframerah)
+                        </button>
+                        <button onclick="changeView('spatial')" id="btn-view-spatial" class="view-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition-all">
+                            OAK-D Spatial AI 3D
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Interactive Canvas Frame -->
+                <div class="relative w-full aspect-[16/9] bg-slate-950 border border-slate-850 rounded-2xl overflow-hidden flex items-center justify-center">
+                    
+                    <!-- Dynamic Canvas -->
+                    <canvas id="stockpileCanvas" class="w-full h-full block cursor-pointer"></canvas>
+
+                    <!-- Real-Time UI overlays to simulate OAK-D Lite interface -->
+                    <div id="spatialOverlay" class="absolute inset-0 pointer-events-none hidden border-2 border-dashed border-cyan-500/20">
+                        <div class="absolute top-4 left-4 bg-cyan-950/80 border border-cyan-500/40 px-2 py-1.5 rounded text-[10px] text-cyan-400 font-mono flex items-center gap-1.5 backdrop-blur">
+                            <span class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-ping"></span>
+                            OAK-D LITE DEPTH LOGIC: ACTIVATED
+                        </div>
+                        <div class="absolute top-4 right-4 bg-cyan-950/80 border border-cyan-500/40 px-2 py-1.5 rounded text-[10px] text-cyan-400 font-mono backdrop-blur">
+                            FPS: 30 | FOV: 68.8°
+                        </div>
+                        <div class="absolute bottom-4 left-4 bg-cyan-950/80 border border-cyan-500/40 p-2 rounded text-[10px] text-cyan-300 font-mono backdrop-blur max-w-xs">
+                            <div class="font-bold border-b border-cyan-800 pb-1 mb-1 text-cyan-400">PROXIMITY DEPTH CLUSTERING</div>
+                            Z-Axis Resolution: ~1.8cm<br>
+                            Spatial Coordinates: X, Y, Z (m)<br>
+                            Subsidence Trigger Threshold: 5.0mm
+                        </div>
+                        
+                        <!-- Crosshair in center -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="w-12 h-12 border border-cyan-500/30 rounded-full flex items-center justify-center">
+                                <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="thermalOverlay" class="absolute inset-0 pointer-events-none hidden">
+                        <div class="absolute top-4 left-4 bg-rose-950/80 border border-rose-500/40 px-2 py-1.5 rounded text-[10px] text-rose-400 font-mono flex items-center gap-1.5 backdrop-blur">
+                            <span class="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
+                            THERMAL GRID (MLX90640 FUSION)
+                        </div>
+                        <!-- Temperature Scale colorbar on side -->
+                        <div class="absolute right-4 top-1/2 -translate-y-1/2 bg-slate-950/80 border border-slate-800 p-2 rounded flex flex-col items-center gap-1">
+                            <span class="text-[9px] text-rose-500 font-bold">120°C</span>
+                            <div class="w-3 h-24 bg-gradient-to-t from-blue-600 via-yellow-400 to-red-600 rounded"></div>
+                            <span class="text-[9px] text-blue-400 font-bold">25°C</span>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Zone Hover Info Panel -->
+                    <div id="hoverTooltip" class="absolute pointer-events-none bg-slate-900/95 border border-slate-700 p-3 rounded-xl text-xs max-w-xs shadow-2xl transition-all duration-150 opacity-0 transform translate-y-2">
+                        <div class="font-bold text-slate-100" id="tooltipTitle">Nama Zona</div>
+                        <p class="text-slate-400 text-[11px] mt-1" id="tooltipDesc">Deskripsi fisik mengenai tumpukan batubara.</p>
+                    </div>
+
+                </div>
+
+                <!-- Explanation / Interactive Guide Footer inside canvas card -->
+                <div class="bg-slate-950/60 border border-slate-850 rounded-2xl p-4 mt-3 flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-cyan-950 flex items-center justify-center text-cyan-400 shrink-0 text-sm">💡</div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        <strong>Cara Eksplorasi:</strong> Klik atau arahkan kursor mouse Anda pada berbagai area di tumpukan batu bara di atas untuk mendapatkan rincian ilmiah dan parameter fisika di masing-masing zona. Gunakan kontrol parameter di kiri untuk mensimulasikan percepatan termal.
+                    </p>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Detailed Theoretical & Solution Reference Section for the Proposal -->
+    <section class="max-w-7xl w-full mx-auto mt-6 bg-slate-900/50 border border-slate-850 rounded-2xl p-5">
+        <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            Implementasi Rencana Desain IoT-AI Digital Twin (Untuk Bab Proposal KIC 2026)
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-850">
+                <h4 class="font-bold text-cyan-400 mb-1">1. Keunggulan Spasial OAK-D Lite</h4>
+                <p class="text-slate-400 leading-relaxed">
+                    Kamera ini memproses stereofotogrametri bawaan chip sehingga Raspberry Pi / Jetson hanya menerima data koordinat 3D ringkas. Berfungsi memantau deformasi permukaan (amblesan tanah penopang / batubara) secara milimeter akurat.
+                </p>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-850">
+                <h4 class="font-bold text-rose-400 mb-1">2. Termal & Gas Fusion (Precursor)</h4>
+                <p class="text-slate-400 leading-relaxed">
+                    Menggabungkan matriks piksel suhu MLX90640 dengan pendeteksi gas $CO$ elektrokimia. Pembakaran internal batubara mengeluarkan gas $CO$ jauh sebelum api fisik terbentuk, menjadi indikator peringatan dini utama.
+                </p>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-850">
+                <h4 class="font-bold text-emerald-400 mb-1">3. Konsep Digital Twin Terintegrasi</h4>
+                <p class="text-slate-400 leading-relaxed">
+                    Hasil perpaduan termal dan perubahan volume kontur 3D dari OAK-D Lite dipetakan ke dalam bentuk model 3D interaktif pada <i>dashboard</i> server lokal, memungkinkan manajemen tambang memantau titik resiko kritis secara non-kontak.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="max-w-7xl w-full mx-auto text-center text-slate-500 text-[10px] mt-6 border-t border-slate-900 pt-4">
+        &copy; 2026 Kideco Innovation Challenge & Institut Teknologi Kalimantan (ITK). Hak Cipta Karya Dilindungi Undang-Undang.
+    </footer>
+
+    <!-- Interactive Logic and Rendering JS -->
+    <script>
+        const canvas = document.getElementById('stockpileCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Parameter Sliders & Value Holders
+        const daysSlider = document.getElementById('daysSlider');
+        const windSlider = document.getElementById('windSlider');
+        const porositySlider = document.getElementById('porositySlider');
+
+        const daysValue = document.getElementById('daysValue');
+        const windValue = document.getElementById('windValue');
+        const porosityValue = document.getElementById('porosityValue');
+
+        const internalTempDisplay = document.getElementById('internalTempDisplay');
+        const coGasDisplay = document.getElementById('coGasDisplay');
+        const tempProgressBar = document.getElementById('tempProgressBar');
+        const coProgressBar = document.getElementById('coProgressBar');
+        const deformationValue = document.getElementById('deformationValue');
+        const deformationStatus = document.getElementById('deformationStatus');
+
+        const riskBanner = document.getElementById('riskBanner');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const statusDesc = document.getElementById('statusDesc');
+
+        const spatialOverlay = document.getElementById('spatialOverlay');
+        const thermalOverlay = document.getElementById('thermalOverlay');
+        const hoverTooltip = document.getElementById('hoverTooltip');
+        const tooltipTitle = document.getElementById('tooltipTitle');
+        const tooltipDesc = document.getElementById('tooltipDesc');
+
+        // State variables
+        let currentView = 'normal'; // 'normal' | 'thermal' | 'spatial'
+        let currentTemp = 28.0;
+        let coGas = 4;
+        let windSpeed = 12;
+        let porosity = 50;
+        let days = 15;
+        let mouseX = 0;
+        let mouseY = 0;
+        let hoverActive = false;
+
+        // Coal Pile Geometric Parameters (Responsive scale base)
+        let pileBaseY = 0;
+        let pileLeftX = 0;
+        let pileRightX = 0;
+        let pileTopLeftX = 0;
+        let pileTopRightX = 0;
+        let pileTopY = 0;
+
+        // Oxygen simulation particles
+        const particles = [];
+
+        // Dynamic System Status Update Logic
+        function updateSimulationValues() {
+            days = parseInt(daysSlider.value);
+            windSpeed = parseInt(windSlider.value);
+            porosity = parseInt(porositySlider.value);
+
+            daysValue.textContent = days + " Hari";
+            
+            let windDesc = "Tenang";
+            if (windSpeed > 8) windDesc = "Sedang";
+            if (windSpeed > 20) windDesc = "Kencang";
+            windValue.textContent = `${windDesc} (${windSpeed} km/h)`;
+
+            let porDesc = "Sangat Rapat";
+            if (porosity > 30) porDesc = "Sedang";
+            if (porosity > 65) porDesc = "Sangat Renggang";
+            porosityValue.textContent = `${porDesc} (${porosity}%)`;
+
+            // Spontaneous combustion simulation formula
+            // Danger peak is high days, moderate wind, and medium-high porosity (ideal oxygen feed + poor cooling)
+            let baseRate = (days * 1.6) + (porosity * 0.45);
+            let windEffect = 0;
+            if (windSpeed < 5) {
+                // Low oxygen replenishment, low peak combustion
+                windEffect = windSpeed * 2.0;
+            } else if (windSpeed > 18) {
+                // High cooling effect suppresses surface thermal build up but feed oxygen inside
+                windEffect = 25 - (windSpeed * 0.5);
+            } else {
+                // Optimal danger zone: medium wind supplies O2 but cannot cool internal depth
+                windEffect = windSpeed * 3.5;
+            }
+
+            // Calculation of Internal Temp
+            currentTemp = 27.5 + (baseRate * 0.45) + (windEffect * 0.95);
+            currentTemp = Math.min(Math.max(currentTemp, 28.0), 145.0); // max scale clamping
+
+            // CO Gas calculation (exponentially linked with oxidation rate)
+            if (currentTemp > 40) {
+                coGas = Math.round(Math.pow((currentTemp - 35), 1.35) * 0.12 + 4);
+            } else {
+                coGas = 4 + Math.round(currentTemp * 0.05);
+            }
+            coGas = Math.min(coGas, 680); // max co ppm clamp
+
+            // Surface Deformation calculation (as temp increases, internal ash collapses causing subsidence)
+            let deformation = 0;
+            if (currentTemp > 65) {
+                deformation = (currentTemp - 65) * 0.18 + (days * 0.05);
+            } else {
+                deformation = days * 0.02;
+            }
+            deformation = Math.min(deformation, 18.5); // max mm clamp
+
+            // Update DOM Displays
+            internalTempDisplay.textContent = currentTemp.toFixed(1);
+            coGasDisplay.textContent = coGas;
+            deformationValue.textContent = deformation.toFixed(1) + " mm";
+
+            tempProgressBar.style.width = Math.min((currentTemp / 120) * 100, 100) + "%";
+            coProgressBar.style.width = Math.min((coGas / 150) * 100, 100) + "%";
+
+            // Risk Banner Visual State Engine
+            if (currentTemp < 45) {
+                riskBanner.className = "rounded-xl p-3 flex items-center gap-3 bg-emerald-950/80 border border-emerald-500/40";
+                statusDot.className = "w-3 h-3 rounded-full bg-emerald-500 shrink-0";
+                statusText.className = "text-xs font-bold text-emerald-400";
+                statusText.textContent = "Resiko Rendah (Normal)";
+                statusDesc.textContent = "Oksidasi awal sangat minim. Kondisi stockpile stabil dan aman.";
+                deformationStatus.textContent = "Sangat Stabil";
+                deformationStatus.className = "text-[10px] text-emerald-400 font-bold";
+            } else if (currentTemp < 75) {
+                riskBanner.className = "rounded-xl p-3 flex items-center gap-3 bg-amber-950/80 border border-amber-500/40";
+                statusDot.className = "w-3 h-3 rounded-full bg-amber-500 shrink-0 animate-pulse";
+                statusText.className = "text-xs font-bold text-amber-400";
+                statusText.textContent = "Resiko Sedang (Awas)";
+                statusDesc.textContent = "Reaksi eksotermik dimulai di Zona Kritis. Gas CO mulai terbentuk.";
+                deformationStatus.textContent = "Amblesan Mikro";
+                deformationStatus.className = "text-[10px] text-amber-400 font-bold";
+            } else {
+                riskBanner.className = "rounded-xl p-3 flex items-center gap-3 bg-rose-950/80 border border-rose-500/40 custom-glow animate-pulse";
+                statusDot.className = "w-3 h-3 rounded-full bg-rose-500 shrink-0 animate-ping";
+                statusText.className = "text-xs font-bold text-rose-400";
+                statusText.textContent = "RESIKO TINGGI (BAHAYA SWABAKAR)";
+                statusDesc.textContent = "Suhu melebihi 75°C. Amblesan terdeteksi oleh OAK-D. Segera lakukan pembongkaran!";
+                deformationStatus.textContent = "SUBSIDENCE!";
+                deformationStatus.className = "text-[10px] text-rose-500 font-bold animate-pulse";
+            }
+        }
+
+        // Change View Modes (RGB, Thermal, Spatial 3D)
+        function changeView(view) {
+            currentView = view;
+            
+            // Toggle view buttons active states
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.className = "view-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition-all";
+            });
+
+            const activeBtn = document.getElementById(`btn-view-${view}`);
+            if (view === 'normal') {
+                activeBtn.className = "view-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-cyan-900/50 text-cyan-400 border border-cyan-800";
+                spatialOverlay.classList.add('hidden');
+                thermalOverlay.classList.add('hidden');
+            } else if (view === 'thermal') {
+                activeBtn.className = "view-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-rose-900/50 text-rose-400 border border-rose-800";
+                spatialOverlay.classList.add('hidden');
+                thermalOverlay.classList.remove('hidden');
+            } else if (view === 'spatial') {
+                activeBtn.className = "view-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-cyan-900/50 text-cyan-400 border border-cyan-800";
+                spatialOverlay.classList.remove('hidden');
+                thermalOverlay.classList.add('hidden');
+            }
+        }
+
+        // Initialize Canvas Sizing
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            // Set pile proportional dimensions
+            pileBaseY = canvas.height * 0.85;
+            pileLeftX = canvas.width * 0.1;
+            pileRightX = canvas.width * 0.9;
+            pileTopLeftX = canvas.width * 0.38;
+            pileTopRightX = canvas.width * 0.62;
+            pileTopY = canvas.height * 0.35;
+        }
+
+        // Generate oxygen flow particles
+        function updateParticles() {
+            if (particles.length < 40 && Math.random() < 0.15) {
+                // Wind starts from left going right
+                particles.push({
+                    x: 0,
+                    y: canvas.height * 0.2 + Math.random() * (canvas.height * 0.6),
+                    vx: 0.5 + (windSpeed * 0.15),
+                    vy: (Math.random() - 0.5) * 0.5,
+                    life: 1.0,
+                    size: 1.5 + Math.random() * 2
+                });
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // Test if particle enters the coal stockpile zone
+                if (isInsideStockpile(p.x, p.y)) {
+                    // Slow down inside due to coal resistance (depending on porosity)
+                    let speedReduction = 0.95 - (porosity * 0.001);
+                    p.vx *= speedReduction;
+                    p.vy *= speedReduction;
+                    p.life -= 0.012; // Oxgen reacts & dies inside
+
+                    // If it reaches Zone 2 (hotspot area) and temp is high, turn particle into heat (orange color)
+                    let distToHotspot = Math.hypot(p.x - (canvas.width * 0.5), p.y - (canvas.height * 0.55));
+                    if (distToHotspot < 60 && currentTemp > 50) {
+                        p.isHeat = true;
+                    }
+                } else {
+                    // Outside stockpile - wind effect pushes it
+                    p.vx = 0.5 + (windSpeed * 0.15);
+                    p.life -= 0.003;
+                }
+
+                if (p.life <= 0 || p.x > canvas.width || p.y > canvas.height) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // Point-in-polygon collision to check if coordinates are inside coal stockpile
+        function isInsideStockpile(x, y) {
+            // Simple trapezoid bounds check
+            if (y > pileBaseY || y < pileTopY) return false;
+            
+            // Calculate left boundary at height y
+            let pct = (y - pileTopY) / (pileBaseY - pileTopY);
+            let leftBound = pileTopLeftX - (pileTopLeftX - pileLeftX) * pct;
+            let rightBound = pileTopRightX + (pileRightX - pileTopRightX) * pct;
+
+            return x >= leftBound && x <= rightBound;
+        }
+
+        // Categorize specific pixel/point to Stockpile Zones (Zone 1, 2, or 3)
+        function getStockpileZone(x, y) {
+            if (!isInsideStockpile(x, y)) return null;
+
+            // Calculate normalized depth from surface (0.0 at surface, 1.0 at base)
+            let pct = (y - pileTopY) / (pileBaseY - pileTopY);
+            let leftBound = pileTopLeftX - (pileTopLeftX - pileLeftX) * pct;
+            let rightBound = pileTopRightX + (pileRightX - pileTopRightX) * pct;
+
+            // Distance to nearest outer shell surface
+            let distToLeft = x - leftBound;
+            let distToRight = rightBound - x;
+            let distToTop = y - pileTopY;
+            let minDistanceToSurface = Math.min(distToLeft, distToRight, distToTop);
+
+            // Zone 1: Outer boundary shell (under 30px deep)
+            if (minDistanceToSurface < 25) {
+                return 1;
+            }
+            
+            // Zone 2: Middle Critical Oxygen flow zone (between 25px and 80px depth, mostly upper-middle)
+            if (minDistanceToSurface < 75 && y < canvas.height * 0.68) {
+                return 2;
+            }
+
+            // Zone 3: Deep anoxic core
+            return 3;
+        }
+
+        // Dynamic Hover tooltip positioning & text
+        function handleHover(e) {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            const zone = getStockpileZone(mouseX, mouseY);
+            
+            if (zone) {
+                hoverActive = true;
+                hoverTooltip.style.opacity = '1';
+                hoverTooltip.style.left = `${e.clientX - rect.left + 20}px`;
+                hoverTooltip.style.top = `${e.clientY - rect.top + 20}px`;
+
+                if (zone === 1) {
+                    tooltipTitle.innerHTML = `<span class="text-emerald-400">Zona 1: Oksidasi & Pendinginan Alamiah</span>`;
+                    tooltipDesc.textContent = "Kedalaman <1 meter. Oksigen sangat berlimpah di sini, namun sirkulasi angin luar yang kencang langsung menyapu panas hasil reaksi kimia. Aman dari titik api.";
+                } else if (zone === 2) {
+                    tooltipTitle.innerHTML = `<span class="text-rose-400">Zona 2: Zona Kritis (Low Ventilation)</span>`;
+                    tooltipDesc.innerHTML = `Kedalaman 1-3 meter. Udara masuk perlahan tetapi tidak cukup kencang untuk membuang panas. Reaksi oksidasi eksotermik terakumulasi di sini menyebabkan <strong>Thermal Runaway</strong> (Kondisi saat ini: ${currentTemp.toFixed(1)}°C).`;
+                } else if (zone === 3) {
+                    tooltipTitle.innerHTML = `<span class="text-blue-400">Zona 3: Zona Anoksik (Inti Dalam)</span>`;
+                    tooltipDesc.textContent = "Bagian terdalam timbunan batubara. Sangat padat dan tidak terjangkau oksigen luar. Reaksi oksidasi sama sekali tidak terjadi di sini.";
+                }
+            } else {
+                hoverActive = false;
+                hoverTooltip.style.opacity = '0';
+            }
+        }
+
+        // Render Loop
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Ground base
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, pileBaseY);
+            ctx.lineTo(canvas.width, pileBaseY);
+            ctx.stroke();
+
+            // Ground fills
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, pileBaseY, canvas.width, canvas.height - pileBaseY);
+
+            // 2. Draw Stockpile based on current selected View Mode
+            if (currentView === 'normal') {
+                renderNormalView();
+            } else if (currentView === 'thermal') {
+                renderThermalView();
+            } else if (currentView === 'spatial') {
+                renderSpatialView();
+            }
+
+            // 3. Render Wind Direction Overlay and Oxygen Particles
+            renderOxygenAtmosphere();
+
+            // 4. Draw Sensor Nodes (OAK-D and IoT Probes)
+            renderSensorHardware();
+
+            requestAnimationFrame(render);
+        }
+
+        // Render Mode 1: RGB Normal Camera View
+        function renderNormalView() {
+            // Draw Main Coal Pile Shape
+            ctx.fillStyle = '#111827'; // Dark coal color
+            ctx.beginPath();
+            ctx.moveTo(pileLeftX, pileBaseY);
+            ctx.lineTo(pileTopLeftX, pileTopY);
+            ctx.lineTo(pileTopRightX, pileTopY);
+            ctx.lineTo(pileRightX, pileBaseY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Coal Texture overlays
+            ctx.strokeStyle = '#1f2937';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 15; i++) {
+                ctx.beginPath();
+                let startY = pileTopY + (pileBaseY - pileTopY) * (i / 15);
+                let pct = (startY - pileTopY) / (pileBaseY - pileTopY);
+                let left = pileTopLeftX - (pileTopLeftX - pileLeftX) * pct;
+                let right = pileTopRightX + (pileRightX - pileTopRightX) * pct;
+                ctx.moveTo(left + Math.random()*20, startY);
+                ctx.lineTo(right - Math.random()*20, startY);
+                ctx.stroke();
+            }
+
+            // If temperature is high, draw smoke rising from Zone 2/Surface
+            if (currentTemp > 65) {
+                drawSmoke(canvas.width * 0.5, canvas.height * 0.45, (currentTemp - 60) * 0.35);
+                drawSmoke(canvas.width * 0.45, canvas.height * 0.5, (currentTemp - 60) * 0.2);
+            }
+        }
+
+        // Render Mode 2: Infrared Thermal Mapping (Color scale representation)
+        function renderThermalView() {
+            // Base background stockpile heat (cool, ~28°C) -> Blue/Green
+            let grad = ctx.createRadialGradient(
+                canvas.width * 0.5, canvas.height * 0.55, 10,
+                canvas.width * 0.5, canvas.height * 0.55, canvas.width * 0.4
+            );
+            
+            // Map actual temperatures to gradient colors dynamically
+            let heatFactor = Math.min((currentTemp - 28) / 95, 1.0); // 0 to 1
+            let centerColor = `rgba(239, 68, 68, ${0.4 + heatFactor * 0.6})`; // Red glowing core
+            if (currentTemp > 85) centerColor = `rgba(254, 240, 138, 0.95)`; // Super heated Core - Yellow glow
+
+            grad.addColorStop(0, centerColor);
+            grad.addColorStop(0.2, `rgba(220, 38, 38, ${0.3 + heatFactor * 0.5})`); // Dark red
+            grad.addColorStop(0.5, 'rgba(101, 163, 13, 0.2)');  // Lime/green outer shell
+            grad.addColorStop(1, 'rgba(37, 99, 235, 0.1)');     // Blue cold ground/air
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(pileLeftX, pileBaseY);
+            ctx.lineTo(pileTopLeftX, pileTopY);
+            ctx.lineTo(pileTopRightX, pileTopY);
+            ctx.lineTo(pileRightX, pileBaseY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Draw Zone Boundaries dynamically
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Add dynamic heatmap heat wave overlay
+            if (currentTemp > 60) {
+                ctx.fillStyle = `rgba(239, 68, 68, ${Math.sin(Date.now() / 200) * 0.05 + 0.1})`;
+                ctx.beginPath();
+                ctx.arc(canvas.width * 0.5, canvas.height * 0.55, 30 + (currentTemp * 0.3), 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Render Mode 3: OAK-D Lite Spatial AI scanning interface (Grid mesh, point clouds & bounding box)
+        function renderSpatialView() {
+            // Draw pile wireframe mesh
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.35)';
+            ctx.lineWidth = 1.5;
+            
+            ctx.beginPath();
+            ctx.moveTo(pileLeftX, pileBaseY);
+            ctx.lineTo(pileTopLeftX, pileTopY);
+            ctx.lineTo(pileTopRightX, pileTopY);
+            ctx.lineTo(pileRightX, pileBaseY);
+            ctx.closePath();
+            ctx.stroke();
+
+            // Horizontal scanlines representing point cloud layers
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.15)';
+            for (let y = pileTopY; y < pileBaseY; y += 12) {
+                let pct = (y - pileTopY) / (pileBaseY - pileTopY);
+                let left = pileTopLeftX - (pileTopLeftX - pileLeftX) * pct;
+                let right = pileTopRightX + (pileRightX - pileTopRightX) * pct;
+                
+                ctx.beginPath();
+                ctx.moveTo(left, y);
+                ctx.lineTo(right, y);
+                ctx.stroke();
+
+                // Draw dots on intersection points to mimic Point Cloud (LIDAR-like/Stereo Depth data)
+                ctx.fillStyle = 'rgba(6, 182, 212, 0.5)';
+                for (let x = left; x <= right; x += 30) {
+                    ctx.fillRect(x + Math.sin(y + Date.now()/500)*2, y, 1.5, 1.5);
+                }
+            }
+
+            // Draw AI Detected Hotspots bounding box inside
+            if (currentTemp > 65) {
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 4]);
+                
+                // Draw Spatially calculated 3D Bounding Box around Zone 2 Hotspot
+                let boxX = canvas.width * 0.42;
+                let boxY = canvas.height * 0.48;
+                let boxW = canvas.width * 0.16;
+                let boxH = canvas.height * 0.18;
+
+                ctx.strokeRect(boxX, boxY, boxW, boxH);
+                ctx.setLineDash([]);
+
+                // AI labeling in HUD style
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+                ctx.fillRect(boxX, boxY, boxW, boxH);
+
+                ctx.fillStyle = '#ef4444';
+                ctx.font = 'bold 9px monospace';
+                ctx.fillText(`ANOMALY: SWABAKAR CRITICAL`, boxX + 4, boxY + 12);
+                ctx.fillText(`CONFIDENCE: ${(82 + (currentTemp - 65) * 0.4).toFixed(1)}%`, boxX + 4, boxY + 24);
+                ctx.fillText(`EST_TEMP: ${currentTemp.toFixed(1)}C`, boxX + 4, boxY + 36);
+            }
+        }
+
+        // Oxygen particle and flow visualizer
+        function renderOxygenAtmosphere() {
+            updateParticles();
+
+            // Draw O2 molecules
+            particles.forEach(p => {
+                ctx.fillStyle = p.isHeat ? 'rgba(249, 115, 22, 0.8)' : 'rgba(14, 165, 233, 0.6)';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Wind vector annotation
+            ctx.strokeStyle = 'rgba(14, 165, 233, 0.3)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(30, 60);
+            ctx.lineTo(30 + windSpeed * 2.5, 60);
+            ctx.stroke();
+
+            // arrow head
+            ctx.fillStyle = 'rgba(14, 165, 233, 0.5)';
+            ctx.beginPath();
+            ctx.moveTo(30 + windSpeed * 2.5, 56);
+            ctx.lineTo(36 + windSpeed * 2.5, 60);
+            ctx.lineTo(30 + windSpeed * 2.5, 64);
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(14, 165, 233, 0.7)';
+            ctx.font = '8px sans-serif';
+            ctx.fillText(`Sirkulasi Angin Oksigen`, 30, 50);
+        }
+
+        // Render physical hardware sensors icons
+        function renderSensorHardware() {
+            // OAK-D Lite static camera location on pole (Top-Left)
+            let camX = canvas.width * 0.15;
+            let camY = canvas.height * 0.2;
+
+            // Draw mounting pole
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(camX, pileBaseY);
+            ctx.lineTo(camX, camY);
+            ctx.stroke();
+
+            // Camera body (Stereo OAK-D Lite shape)
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.7)';
+            ctx.lineWidth = 1.5;
+            ctx.fillRect(camX - 20, camY - 10, 40, 20);
+            ctx.strokeRect(camX - 20, camY - 10, 40, 20);
+
+            // Three lenses of OAK-D
+            ctx.fillStyle = '#06b6d4'; // Center RGB
+            ctx.beginPath();
+            ctx.arc(camX, camY, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#334155'; // Left Mono
+            ctx.beginPath();
+            ctx.arc(camX - 12, camY, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#334155'; // Right Mono
+            ctx.beginPath();
+            ctx.arc(camX + 12, camY, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Label OAK-D
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = '9px sans-serif';
+            ctx.fillText("OAK-D Lite", camX - 23, camY - 15);
+
+            // Field of view lines (FOV) if spatial mode is on
+            if (currentView === 'spatial') {
+                ctx.strokeStyle = 'rgba(6, 182, 212, 0.12)';
+                ctx.fillStyle = 'rgba(6, 182, 212, 0.02)';
+                ctx.beginPath();
+                ctx.moveTo(camX, camY);
+                ctx.lineTo(pileLeftX + 120, pileBaseY);
+                ctx.lineTo(pileRightX - 120, pileBaseY);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // Draw embedded IoT Gas & Probe sensor inside stockpile
+            let probeX = canvas.width * 0.52;
+            let probeY = canvas.height * 0.55;
+
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(probeX, pileTopY - 20);
+            ctx.lineTo(probeX, probeY);
+            ctx.stroke();
+
+            // Probe head
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.arc(probeX, probeY, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#fff';
+            ctx.font = '9px sans-serif';
+            ctx.fillText("Sensor Probe CO & Suhu", probeX - 55, pileTopY - 25);
+        }
+
+        // Smoke particles simulation drawing
+        function drawSmoke(x, y, intensity) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.12)';
+            for (let i = 0; i < intensity; i++) {
+                ctx.beginPath();
+                let wobbleX = Math.sin((Date.now() / 150) + i) * 15;
+                let riseY = (i * 8) % 60;
+                ctx.arc(x + wobbleX, y - riseY, 10 + i * 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        // Initialize Sliders Events
+        daysSlider.addEventListener('input', updateSimulationValues);
+        windSlider.addEventListener('input', updateSimulationValues);
+        porositySlider.addEventListener('input', updateSimulationValues);
+        canvas.addEventListener('mousemove', handleHover);
+        canvas.addEventListener('mouseleave', () => {
+            hoverActive = false;
+            hoverTooltip.style.opacity = '0';
+        });
+
+        // Initialize App on Window Load
+        window.onload = function() {
+            resizeCanvas();
+            updateSimulationValues();
+            render();
+        };
+
+        window.addEventListener('resize', resizeCanvas);
+    </script>
+</body>
+</html>

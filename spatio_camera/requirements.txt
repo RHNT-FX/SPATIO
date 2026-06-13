@@ -1,0 +1,4 @@
+numpy
+depthai<3.0.0
+opencv-python
+requests
