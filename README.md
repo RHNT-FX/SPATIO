@@ -99,4 +99,4 @@ python volumetric_core.py --mock --endpoint http://localhost:3000/api/data
 - **Kolaborasi Git**: Tim Dashboard fokus di folder `dashboard/`. Tim AI/Kamera fokus di `spatio_camera/`. Biasakan untuk selalu melakukan `git pull` sebelum memulai pekerjaan.
 
 ---
-*© 2026 Tim Integrasi AI-IoT Kalimantan - Karya diikutsertakan untuk Kideco Innovation Challenge.*
+*© 2026 Tim clingak clinguk ITK - Karya diikutsertakan untuk Kideco Innovation Challenge.*
