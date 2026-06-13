@@ -11,6 +11,8 @@ To prevent false alarms from operational activity (like an excavator removing co
 *   **Hardware-in-the-Loop Stereo Vision:** Utilizes the Myriad X VPU on the OAK-D Lite for native, high-speed depth matrix calculation in real-world millimeters.
 *   **Self-Calibrating Baseline:** Instantly maps the unique topology of any stockpile within 2 seconds of booting.
 *   **Sensor Fusion Logic Gate:** Differentiates between routine operational volume loss (Excavators) and critical combustion events based on multi-sensor confidence grading.
+*   **Noise Immunity & Background Filtering:** Strictly ignores moving objects beyond 1.5 meters and uses spatial area filtering (median blur + contour area checking) to eliminate false triggers from pixel noise or tiny vibrations.
+*   **USB 2.0 Compatibility Mode:** The pipeline is explicitly optimized to run reliably on lower-bandwidth USB 2.0 connections without crashing the VPU (uses forced USB High-Speed mode and low 5-FPS data polling).
 *   **Headless Edge Architecture:** Runs purely in the terminal for maximum CPU efficiency, outputting a serialized JSON data stream ready for network transmission (MQTT/HTTP).
 *   **Built-in Mock Simulator:** Can be tested completely without hardware using a 40-second automated state-machine.
 
