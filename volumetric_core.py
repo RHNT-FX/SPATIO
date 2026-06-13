@@ -28,16 +28,30 @@ def create_depthai_pipeline():
     xoutDepth.setStreamName("depth")
 
     monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    monoLeft.setBoardSocket(dai.CameraBoardSocket.LEFT)
+    monoLeft.setBoardSocket(dai.CameraBoardSocket.CAM_B)
+    monoLeft.setFps(5) # Set to 5 FPS for USB 2.0 compatibility
     monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
-    monoRight.setBoardSocket(dai.CameraBoardSocket.RIGHT)
+    monoRight.setBoardSocket(dai.CameraBoardSocket.CAM_C)
+    monoRight.setFps(5) # Set to 5 FPS for USB 2.0 compatibility
 
-    depth.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
-    depth.setDepthAlign(dai.CameraBoardSocket.LEFT)
+    depth.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
+    depth.setDepthAlign(dai.CameraBoardSocket.CAM_B)
 
     monoLeft.out.link(depth.left)
     monoRight.out.link(depth.right)
     depth.depth.link(xoutDepth.input)
+
+    # Re-enabled RGB Camera with ultra-low bandwidth settings for USB 2.0
+    camRgb = pipeline.create(dai.node.ColorCamera)
+    xoutRgb = pipeline.create(dai.node.XLinkOut)
+    xoutRgb.setStreamName("rgb")
+    camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+    camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+    camRgb.setFps(5) # Set to 5 FPS to avoid crashing the USB 2.0 connection
+    camRgb.setIspScale(1, 3) # Scales 1080p to 640x360
+    camRgb.setInterleaved(False)
+    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
+    camRgb.isp.link(xoutRgb.input)
 
     return pipeline
 
@@ -51,7 +65,7 @@ def main():
     # --- Setup ---
     frame_shape = (400, 640) 
     baseline_depth_map = None
-    subsidence_threshold_mm = 50.0  
+    subsidence_threshold_mm = 20.0  # Lowered from 50.0 to make it more sensitive for close-range testing
     last_print_time = 0
     start_time = time.time() 
 
@@ -75,8 +89,10 @@ def main():
         print("🔌 Connecting to camera...")
         try:
             pipeline = create_depthai_pipeline()
-            device = dai.Device(pipeline)
+            # Explicitly force USB 2.0 mode to prevent memory buffer crashes
+            device = dai.Device(pipeline, maxUsbSpeed=dai.UsbSpeed.HIGH)
             depth_queue = device.getOutputQueue(name="depth", maxSize=4, blocking=False)
+            rgb_queue = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
             print("✅ Camera connected successfully!")
         except Exception as e:
             print(f"❌ Failed to connect to OAK-D Lite. Is it plugged in? Error: {e}")
@@ -115,15 +131,44 @@ def main():
             else:
                 inDepth = depth_queue.get()
                 current_depth_map = inDepth.getFrame().astype(np.float32)
+                inRgb = rgb_queue.tryGet()
+                if inRgb is not None:
+                    current_rgb_frame = inRgb.getCvFrame()
+                else:
+                    current_rgb_frame = None
 
             # 2. Differential Processing
-            valid_mask = (current_depth_map > 0) & (baseline_depth_map > 0)
+            # Only monitor objects within 1.5 meters (1500mm) to ignore background movement like fans
+            max_depth_mm = 1500.0
+            valid_mask = (current_depth_map > 0) & (baseline_depth_map > 0) & (baseline_depth_map < max_depth_mm)
             diff_map = np.zeros_like(current_depth_map)
             diff_map[valid_mask] = current_depth_map[valid_mask] - baseline_depth_map[valid_mask]
             
-            # 3. Thresholding
-            max_subsidence = np.max(diff_map)
-            volume_loss_detected = bool(max_subsidence > subsidence_threshold_mm)
+            # Apply median blur to reduce salt-and-pepper noise
+            diff_map_smoothed = cv2.medianBlur(diff_map, 5)
+
+            # 3. Thresholding & Area Filtering
+            # Create a binary mask where the subsidence is greater than the threshold
+            anomaly_mask = (diff_map_smoothed > subsidence_threshold_mm).astype(np.uint8) * 255
+            
+            # Find the exact contours of the collapsed areas
+            contours, _ = cv2.findContours(anomaly_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            volume_loss_detected = False
+            max_subsidence = 0.0
+            valid_contours = []
+
+            for cnt in contours:
+                # Require a minimum area (e.g., 500 pixels) to be considered a real drop, ignoring single noisy pixels
+                if cv2.contourArea(cnt) > 500:
+                    valid_contours.append(cnt)
+                    volume_loss_detected = True
+                    
+            if volume_loss_detected:
+                # Calculate the max subsidence only within the valid areas to avoid noise spikes
+                mask = np.zeros_like(diff_map_smoothed, dtype=np.uint8)
+                cv2.drawContours(mask, valid_contours, -1, 255, thickness=cv2.FILLED)
+                max_subsidence = np.max(diff_map_smoothed[mask == 255])
             
             # 4. Sensor Fusion
             temp_c = 35.0 + np.random.uniform(-1, 1)
@@ -132,10 +177,16 @@ def main():
             confidence = "N/A"
 
             if volume_loss_detected:
-                if args.mock and is_swabakar:
-                    temp_c += 50.0 
-                    co_ppm += 600.0
-                    
+                if args.mock:
+                    if is_swabakar:
+                        temp_c += 50.0 
+                        co_ppm += 600.0
+                else:
+                    # Hardware Mode Randomizer: 50% chance to simulate a Swabakar thermal/gas spike
+                    if np.random.random() > 0.5:
+                        temp_c += 50.0 + np.random.uniform(5, 15)
+                        co_ppm += 600.0 + np.random.uniform(50, 100)
+
                 if temp_c > 60.0 and co_ppm > 400.0:
                     status_text = "CRITICAL_SWABAKAR"
                     confidence = "HIGH (Volume + Temp + CO)"
@@ -199,9 +250,11 @@ def main():
                 # Overall status text in the top left
                 cv2.putText(heatmap, f"STATUS: {status_text}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
                 
-                cv2.imshow("Volumetric Edge Camera", heatmap)
+                cv2.imshow("Volumetric Edge Camera (Depth Heatmap)", heatmap)
+                if not args.mock and current_rgb_frame is not None:
+                    cv2.imshow("Real World View (RGB)", current_rgb_frame)
                 
-                key = cv2.waitKey(200) & 0xFF
+                key = cv2.waitKey(20) & 0xFF
                 if key == ord('q'):
                     break
             else:
