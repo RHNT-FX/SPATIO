@@ -1,3 +1,4 @@
 numpy
 depthai
 opencv-python
+requests

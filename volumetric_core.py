@@ -3,6 +3,9 @@ import json
 import time
 import argparse
 import sys
+import cv2
+import requests
+
 try:
     import depthai as dai
 except ImportError:
@@ -17,7 +20,6 @@ def create_depthai_pipeline():
     """Configures the OAK-D hardware pipeline for stereo depth."""
     pipeline = dai.Pipeline()
 
-    # Define sources and outputs
     monoLeft = pipeline.create(dai.node.MonoCamera)
     monoRight = pipeline.create(dai.node.MonoCamera)
     depth = pipeline.create(dai.node.StereoDepth)
@@ -25,17 +27,14 @@ def create_depthai_pipeline():
 
     xoutDepth.setStreamName("depth")
 
-    # Properties
     monoLeft.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
     monoLeft.setBoardSocket(dai.CameraBoardSocket.LEFT)
     monoRight.setResolution(dai.MonoCameraProperties.SensorResolution.THE_400_P)
     monoRight.setBoardSocket(dai.CameraBoardSocket.RIGHT)
 
-    # High density depth for better volumetric data
     depth.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
     depth.setDepthAlign(dai.CameraBoardSocket.LEFT)
 
-    # Linking
     monoLeft.out.link(depth.left)
     monoRight.out.link(depth.right)
     depth.depth.link(xoutDepth.input)
@@ -45,18 +44,23 @@ def create_depthai_pipeline():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mock', action='store_true', help="Run with mock data instead of real OAK-D Lite")
+    parser.add_argument('--visual', action='store_true', help="Show visual pop-up window with bounding boxes")
+    parser.add_argument('--endpoint', type=str, help="HTTP URL to POST the JSON data to (e.g. http://localhost:3000/api/data)")
     args = parser.parse_args()
 
     # --- Setup ---
-    # The OAK-D Lite 400p resolution is 640x400
     frame_shape = (400, 640) 
     baseline_depth_map = None
-    subsidence_threshold_mm = 50.0  # Anomaly if depth increases by 50mm
+    subsidence_threshold_mm = 50.0  
     last_print_time = 0
     start_time = time.time() 
 
-    print("🚀 Starting Volumetric Core (Headless Terminal Mode)...")
-    
+    print("🚀 Starting Volumetric Core...")
+    if args.visual:
+        print("🖥️  Visual Mode: ENABLED (Will show pop-up windows)")
+    else:
+        print("🖥️  Visual Mode: DISABLED (Headless terminal only. Use --visual to see pop-ups)")
+        
     device = None
     depth_queue = None
 
@@ -76,7 +80,6 @@ def main():
             print("✅ Camera connected successfully!")
         except Exception as e:
             print(f"❌ Failed to connect to OAK-D Lite. Is it plugged in? Error: {e}")
-            print("You can run with --mock to simulate it without hardware.")
             return
 
     # Take a baseline
@@ -84,22 +87,16 @@ def main():
     if args.mock:
         baseline_depth_map = generate_mock_depth_map(shape=frame_shape)
     else:
-        # Wait a couple seconds for the camera auto-exposure to settle
         time.sleep(2)
-        # Grab the first valid frame
         inDepth = depth_queue.get()
         baseline_depth_map = inDepth.getFrame().astype(np.float32)
         
     print("✅ Baseline set. Monitoring for Volume Loss (Subsidence)...")
-    if args.mock:
-        print("ℹ️  Running mock state machine (Normal -> Operational -> Normal -> Swabakar)...")
-    else:
-        print("ℹ️  Running live hardware feed! Try the 'Book Drop' test now.")
 
     try:
         while True:
             current_time = time.time()
-            is_swabakar = False # used for mock logic later
+            is_swabakar = False
 
             # 1. Get Real-time Depth Map
             if args.mock:
@@ -110,27 +107,25 @@ def main():
                 is_swabakar = (cycle == 3)
 
                 if is_collapsed:
-                    center_y, center_x = frame_shape[0]//2, frame_shape[1]//2
+                    center_y, center_x = frame_shape[0]//2 + 50, frame_shape[1]//2 - 100
                     radius = 80
                     y, x = np.ogrid[-center_y:frame_shape[0]-center_y, -center_x:frame_shape[1]-center_x]
                     mask = x*x + y*y <= radius*radius
                     current_depth_map[mask] += 100.0  
             else:
-                # Get real frame from OAK-D Lite
                 inDepth = depth_queue.get()
                 current_depth_map = inDepth.getFrame().astype(np.float32)
 
-            # 2. Differential Processing (Real-time Z - Baseline Z)
-            # We ignore 0 values (which mean 'out of range' or 'invalid pixel' in depthai)
+            # 2. Differential Processing
             valid_mask = (current_depth_map > 0) & (baseline_depth_map > 0)
             diff_map = np.zeros_like(current_depth_map)
             diff_map[valid_mask] = current_depth_map[valid_mask] - baseline_depth_map[valid_mask]
             
-            # 3. Thresholding (Volume Loss Detection)
+            # 3. Thresholding
             max_subsidence = np.max(diff_map)
             volume_loss_detected = bool(max_subsidence > subsidence_threshold_mm)
             
-            # 4. Sensor Fusion (Mock Thermal & Gas data)
+            # 4. Sensor Fusion
             temp_c = 35.0 + np.random.uniform(-1, 1)
             co_ppm = 120.0 + np.random.uniform(-5, 5)
             status_text = "NORMAL"
@@ -163,14 +158,61 @@ def main():
             
             if volume_loss_detected or (current_time - last_print_time >= 1.0):
                 print(json.dumps(payload))
+                
+                # Push the data to the Web Dashboard if an endpoint was provided
+                if args.endpoint:
+                    try:
+                        requests.post(args.endpoint, json=payload, timeout=0.5)
+                    except requests.exceptions.RequestException as e:
+                        print(f"⚠️  Failed to send data to dashboard: {e}")
+                        
                 last_print_time = current_time
 
-            if args.mock:
-                time.sleep(0.2)
+            # 6. Visual Mode (YOLO-style bounding boxes)
+            if args.visual:
+                # Create a heatmap of the current depth
+                display_map = np.clip((current_depth_map - 700) / 300 * 255, 0, 255).astype(np.uint8)
+                heatmap = cv2.applyColorMap(display_map, cv2.COLORMAP_JET)
+                
+                color = (0, 255, 0) # Green for normal
+                
+                # If anomaly, draw bounding box around the collapsed area!
+                if volume_loss_detected:
+                    color = (0, 0, 255) if is_swabakar else (0, 165, 255) # Red for Swabakar, Orange for Excavator
+                    
+                    # Create a binary mask where the subsidence is greater than the threshold
+                    anomaly_mask = (diff_map > subsidence_threshold_mm).astype(np.uint8) * 255
+                    
+                    # Find the exact contours (edges) of the collapsed area
+                    contours, _ = cv2.findContours(anomaly_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    
+                    for cnt in contours:
+                        # Only draw box if the collapsed area is decently large
+                        if cv2.contourArea(cnt) > 500:
+                            x, y, w, h = cv2.boundingRect(cnt)
+                            # Draw the YOLO-style bounding box
+                            cv2.rectangle(heatmap, (x, y), (x+w, y+h), color, 3)
+                            # Put a label above the box
+                            label = f"SUBSIDENCE: {int(max_subsidence)}mm"
+                            cv2.putText(heatmap, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+                # Overall status text in the top left
+                cv2.putText(heatmap, f"STATUS: {status_text}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+                
+                cv2.imshow("Volumetric Edge Camera", heatmap)
+                
+                key = cv2.waitKey(200) & 0xFF
+                if key == ord('q'):
+                    break
+            else:
+                if args.mock:
+                    time.sleep(0.2)
             
     except KeyboardInterrupt:
         print("\n🛑 Execution stopped by user.")
     finally:
+        if args.visual:
+            cv2.destroyAllWindows()
         if device is not None:
             device.close()
 
