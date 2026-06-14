@@ -5,12 +5,38 @@ import argparse
 import sys
 import cv2
 import requests
+import threading
+from flask import Flask, Response
 
 try:
     import depthai as dai
 except ImportError:
     pass # Will handle this gracefully in main()
 
+# --- Flask Server Setup for MJPEG Streaming ---
+app = Flask(__name__)
+global_frame = None
+frame_lock = threading.Lock()
+
+def generate_frames():
+    global global_frame
+    while True:
+        with frame_lock:
+            if global_frame is None:
+                continue
+            # Encode frame
+            ret, buffer = cv2.imencode('.jpg', global_frame)
+            frame = buffer.tobytes()
+            
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        time.sleep(0.05) # Limit to ~20 fps to save CPU
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+# --- Edge AI Core Logic ---
 def generate_mock_depth_map(base_depth=800, noise_level=5, shape=(400, 640)):
     """Generates a noisy flat surface depth map."""
     noise = np.random.normal(0, noise_level, shape).astype(np.float32)
@@ -41,7 +67,6 @@ def create_depthai_pipeline():
     monoRight.out.link(depth.right)
     depth.depth.link(xoutDepth.input)
 
-    # Re-enabled RGB Camera with ultra-low bandwidth settings for USB 2.0
     camRgb = pipeline.create(dai.node.ColorCamera)
     xoutRgb = pipeline.create(dai.node.XLinkOut)
     xoutRgb.setStreamName("rgb")
@@ -56,16 +81,24 @@ def create_depthai_pipeline():
     return pipeline
 
 def main():
+    global global_frame
+    
     parser = argparse.ArgumentParser()
     parser.add_argument('--mock', action='store_true', help="Run with mock data instead of real OAK-D Lite")
     parser.add_argument('--visual', action='store_true', help="Show visual pop-up window with bounding boxes")
     parser.add_argument('--endpoint', type=str, help="HTTP URL to POST the JSON data to (e.g. http://localhost:3000/api/data)")
     args = parser.parse_args()
 
+    # Start Flask MJPEG Server in a background thread
+    flask_thread = threading.Thread(target=lambda: app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False))
+    flask_thread.daemon = True
+    flask_thread.start()
+    print("📡 MJPEG Video Stream started on http://0.0.0.0:5000/video_feed")
+
     # --- Setup ---
     frame_shape = (400, 640) 
     baseline_depth_map = None
-    subsidence_threshold_mm = 20.0  # Lowered from 50.0 to make it more sensitive for close-range testing
+    subsidence_threshold_mm = 20.0 
     last_print_time = 0
     start_time = time.time() 
 
@@ -77,6 +110,7 @@ def main():
         
     device = None
     depth_queue = None
+    rgb_queue = None
 
     if args.mock:
         print("🔧 Mode: MOCK DATA (Simulation)")
@@ -89,7 +123,6 @@ def main():
         print("🔌 Connecting to camera...")
         try:
             pipeline = create_depthai_pipeline()
-            # Explicitly force USB 2.0 mode to prevent memory buffer crashes
             device = dai.Device(pipeline, maxUsbSpeed=dai.UsbSpeed.HIGH)
             depth_queue = device.getOutputQueue(name="depth", maxSize=4, blocking=False)
             rgb_queue = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
@@ -138,20 +171,15 @@ def main():
                     current_rgb_frame = None
 
             # 2. Differential Processing
-            # Only monitor objects within 1.5 meters (1500mm) to ignore background movement like fans
             max_depth_mm = 1500.0
             valid_mask = (current_depth_map > 0) & (baseline_depth_map > 0) & (baseline_depth_map < max_depth_mm)
             diff_map = np.zeros_like(current_depth_map)
             diff_map[valid_mask] = current_depth_map[valid_mask] - baseline_depth_map[valid_mask]
             
-            # Apply median blur to reduce salt-and-pepper noise
             diff_map_smoothed = cv2.medianBlur(diff_map, 5)
 
             # 3. Thresholding & Area Filtering
-            # Create a binary mask where the subsidence is greater than the threshold
             anomaly_mask = (diff_map_smoothed > subsidence_threshold_mm).astype(np.uint8) * 255
-            
-            # Find the exact contours of the collapsed areas
             contours, _ = cv2.findContours(anomaly_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
             volume_loss_detected = False
@@ -159,13 +187,11 @@ def main():
             valid_contours = []
 
             for cnt in contours:
-                # Require a minimum area (e.g., 500 pixels) to be considered a real drop, ignoring single noisy pixels
                 if cv2.contourArea(cnt) > 500:
                     valid_contours.append(cnt)
                     volume_loss_detected = True
                     
             if volume_loss_detected:
-                # Calculate the max subsidence only within the valid areas to avoid noise spikes
                 mask = np.zeros_like(diff_map_smoothed, dtype=np.uint8)
                 cv2.drawContours(mask, valid_contours, -1, 255, thickness=cv2.FILLED)
                 max_subsidence = np.max(diff_map_smoothed[mask == 255])
@@ -182,7 +208,6 @@ def main():
                         temp_c += 50.0 
                         co_ppm += 600.0
                 else:
-                    # Hardware Mode Randomizer: 50% chance to simulate a Swabakar thermal/gas spike
                     if np.random.random() > 0.5:
                         temp_c += 50.0 + np.random.uniform(5, 15)
                         co_ppm += 600.0 + np.random.uniform(50, 100)
@@ -208,49 +233,34 @@ def main():
             }
             
             if volume_loss_detected or (current_time - last_print_time >= 1.0):
-                print(json.dumps(payload))
-                
-                # Push the data to the Web Dashboard if an endpoint was provided
                 if args.endpoint:
                     try:
                         requests.post(args.endpoint, json=payload, timeout=0.5)
                     except requests.exceptions.RequestException as e:
-                        print(f"⚠️  Failed to send data to dashboard: {e}")
-                        
+                        pass
                 last_print_time = current_time
 
-            # 6. Visual Mode (YOLO-style bounding boxes)
-            if args.visual:
-                # Create a heatmap of the current depth
-                display_map = np.clip((current_depth_map - 700) / 300 * 255, 0, 255).astype(np.uint8)
-                heatmap = cv2.applyColorMap(display_map, cv2.COLORMAP_JET)
-                
-                color = (0, 255, 0) # Green for normal
-                
-                # If anomaly, draw bounding box around the collapsed area!
-                if volume_loss_detected:
-                    color = (0, 0, 255) if is_swabakar else (0, 165, 255) # Red for Swabakar, Orange for Excavator
-                    
-                    # Create a binary mask where the subsidence is greater than the threshold
-                    anomaly_mask = (diff_map > subsidence_threshold_mm).astype(np.uint8) * 255
-                    
-                    # Find the exact contours (edges) of the collapsed area
-                    contours, _ = cv2.findContours(anomaly_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                    
-                    for cnt in contours:
-                        # Only draw box if the collapsed area is decently large
-                        if cv2.contourArea(cnt) > 500:
-                            x, y, w, h = cv2.boundingRect(cnt)
-                            # Draw the YOLO-style bounding box
-                            cv2.rectangle(heatmap, (x, y), (x+w, y+h), color, 3)
-                            # Put a label above the box
-                            label = f"SUBSIDENCE: {int(max_subsidence)}mm"
-                            cv2.putText(heatmap, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            # 6. MJPEG Stream Processing (Always run this so web gets video)
+            display_map = np.clip((current_depth_map - 700) / 300 * 255, 0, 255).astype(np.uint8)
+            heatmap = cv2.applyColorMap(display_map, cv2.COLORMAP_JET)
+            color = (0, 255, 0) # Green for normal
+            
+            if volume_loss_detected:
+                color = (0, 0, 255) if is_swabakar else (0, 165, 255)
+                for cnt in valid_contours:
+                    x, y, w, h = cv2.boundingRect(cnt)
+                    cv2.rectangle(heatmap, (x, y), (x+w, y+h), color, 3)
+                    label = f"SUBSIDENCE: {int(max_subsidence)}mm"
+                    cv2.putText(heatmap, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-                # Overall status text in the top left
-                cv2.putText(heatmap, f"STATUS: {status_text}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
-                
-                cv2.imshow("Volumetric Edge Camera (Depth Heatmap)", heatmap)
+            cv2.putText(heatmap, f"STATUS: {status_text}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+
+            with frame_lock:
+                global_frame = heatmap.copy()
+
+            # 7. Local Visual Mode
+            if args.visual:
+                cv2.imshow("Volumetric Edge Camera (Depth)", heatmap)
                 if not args.mock and current_rgb_frame is not None:
                     cv2.imshow("Real World View (RGB)", current_rgb_frame)
                 
@@ -259,7 +269,7 @@ def main():
                     break
             else:
                 if args.mock:
-                    time.sleep(0.2)
+                    time.sleep(0.1)
             
     except KeyboardInterrupt:
         print("\n🛑 Execution stopped by user.")

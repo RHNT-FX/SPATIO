@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Control Panel - Kideco</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #334155;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen p-6">
+    <div class="max-w-md mx-auto bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700">
+        <h1 class="text-2xl font-bold text-center mb-2">Remote Control Video Demo</h1>
+        <p class="text-xs text-center text-slate-400 mb-8">Ubah slider ini dari HP Anda untuk memanipulasi Dashboard saat merekam video</p>
+
+        <!-- Toggle Override -->
+        <div class="flex items-center justify-between bg-slate-900 p-4 rounded-xl mb-8 border border-slate-700">
+            <div>
+                <div class="font-bold">Aktifkan Mode Override</div>
+                <div class="text-xs text-slate-400">Timpa data random dari Python</div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="toggleOverride" class="sr-only peer">
+              <div class="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+        </div>
+
+        <div id="controlsContainer" class="opacity-50 pointer-events-none transition-opacity duration-300">
+            <!-- Suhu Slider -->
+            <div class="mb-8">
+                <div class="flex justify-between items-end mb-2">
+                    <label class="font-bold text-rose-400">🔥 Suhu Internal</label>
+                    <span class="text-2xl font-bold"><span id="tempVal">35</span>°C</span>
+                </div>
+                <input type="range" id="tempSlider" min="20" max="120" value="35" class="w-full">
+                <div class="flex justify-between text-xs text-slate-500 mt-2">
+                    <span>20°C (Normal)</span>
+                    <span>120°C (Terbakar)</span>
+                </div>
+            </div>
+
+            <!-- CO Slider -->
+            <div class="mb-8">
+                <div class="flex justify-between items-end mb-2">
+                    <label class="font-bold text-amber-400">💨 Gas CO (PPM)</label>
+                    <span class="text-2xl font-bold"><span id="coVal">120</span> ppm</span>
+                </div>
+                <input type="range" id="coSlider" min="0" max="1000" value="120" class="w-full">
+                <div class="flex justify-between text-xs text-slate-500 mt-2">
+                    <span>0 ppm</span>
+                    <span>1000 ppm (Kritis)</span>
+                </div>
+            </div>
+            
+            <button id="btnSwabakar" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-4 rounded-xl shadow-lg transition-colors border border-rose-400 mb-3">
+                🚨 SIMULASI SWABAKAR INSTAN
+            </button>
+            <button id="btnNormal" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow-lg transition-colors border border-emerald-400">
+                ✅ KEMBALI NORMAL
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        const toggle = document.getElementById('toggleOverride');
+        const container = document.getElementById('controlsContainer');
+        const tempSlider = document.getElementById('tempSlider');
+        const coSlider = document.getElementById('coSlider');
+        const tempVal = document.getElementById('tempVal');
+        const coVal = document.getElementById('coVal');
+        const btnSwabakar = document.getElementById('btnSwabakar');
+        const btnNormal = document.getElementById('btnNormal');
+
+        let overrides = { is_active: false, temperature_c: 35, co_ppm: 120 };
+
+        function sendUpdate() {
+            socket.emit('set_override', overrides);
+        }
+
+        // Receive state from server
+        socket.on('override_state', (state) => {
+            overrides = state;
+            toggle.checked = state.is_active;
+            if(state.temperature_c !== null) {
+                tempSlider.value = state.temperature_c;
+                tempVal.innerText = parseFloat(state.temperature_c).toFixed(0);
+            }
+            if(state.co_ppm !== null) {
+                coSlider.value = state.co_ppm;
+                coVal.innerText = parseFloat(state.co_ppm).toFixed(0);
+            }
+            
+            if(state.is_active) {
+                container.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                container.classList.add('opacity-50', 'pointer-events-none');
+            }
+        });
+
+        toggle.addEventListener('change', (e) => {
+            overrides.is_active = e.target.checked;
+            sendUpdate();
+        });
+
+        tempSlider.addEventListener('input', (e) => {
+            overrides.temperature_c = parseFloat(e.target.value);
+            tempVal.innerText = overrides.temperature_c;
+            sendUpdate();
+        });
+
+        coSlider.addEventListener('input', (e) => {
+            overrides.co_ppm = parseFloat(e.target.value);
+            coVal.innerText = overrides.co_ppm;
+            sendUpdate();
+        });
+
+        btnSwabakar.addEventListener('click', () => {
+            overrides.temperature_c = 95;
+            overrides.co_ppm = 780;
+            sendUpdate();
+        });
+
+        btnNormal.addEventListener('click', () => {
+            overrides.temperature_c = 32;
+            overrides.co_ppm = 45;
+            sendUpdate();
+        });
+    </script>
+</body>
+</html>

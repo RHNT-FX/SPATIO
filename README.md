@@ -1,66 +1,102 @@
-# Spatio-Temporal Stockpile Coal Combustion Simulator
+# Kideco Innovation Challenge 2026: Stockpile Spontaneous Combustion Monitoring
 
-An Edge AI system designed to detect **Swabakar** (spontaneous internal combustion) in massive coal stockpiles using volumetric 3D analysis and sensor fusion.
+Sistem cerdas pemantauan tambang berbasis **Edge AI (OAK-D Lite)** dan **IoT Terintegrasi** untuk deteksi dini bahaya swabakar (Spontaneous Combustion) pada stockpile batu bara. Proyek ini memadukan pembacaan deformasi spasial 3D (amblesan), suhu termal, dan gas karbon monoksida (CO) ke dalam *dashboard* kendali pusat.
 
-## Overview
-Swabakar occurs when coal oxidizes and burns from the inside out, creating dangerous, hidden internal cavities that eventually collapse ("amblas"). This system uses an **OAK-D Lite 3D Stereo Camera** to map the physical shape of the stockpile in real-time. By calculating Z-axis differential math against a baseline snapshot, it detects sudden volume loss. 
+##  Struktur Monorepo
 
-To prevent false alarms from operational activity (like an excavator removing coal), the volumetric data is fused with Thermal and CO (Carbon Monoxide) gas sensors using a multi-factor logic gate.
+Repository ini menggabungkan pengembangan *Front-End Dashboard* dan *Edge AI Python* ke dalam satu wadah untuk mempermudah integrasi tim.
 
-## Features
-*   **Hardware-in-the-Loop Stereo Vision:** Utilizes the Myriad X VPU on the OAK-D Lite for native, high-speed depth matrix calculation in real-world millimeters.
-*   **Self-Calibrating Baseline:** Instantly maps the unique topology of any stockpile within 2 seconds of booting.
-*   **Sensor Fusion Logic Gate:** Differentiates between routine operational volume loss (Excavators) and critical combustion events based on multi-sensor confidence grading.
-*   **Noise Immunity & Background Filtering:** Strictly ignores moving objects beyond 1.5 meters and uses spatial area filtering (median blur + contour area checking) to eliminate false triggers from pixel noise or tiny vibrations.
-*   **USB 2.0 Compatibility Mode:** The pipeline is explicitly optimized to run reliably on lower-bandwidth USB 2.0 connections without crashing the VPU (uses forced USB High-Speed mode and low 5-FPS data polling).
-*   **Headless Edge Architecture:** Runs purely in the terminal for maximum CPU efficiency, outputting a serialized JSON data stream ready for network transmission (MQTT/HTTP).
-*   **Built-in Mock Simulator:** Can be tested completely without hardware using a 40-second automated state-machine.
+```text
+├── dashboard/        # React Web Dashboard & Node.js WebSockets Gateway
+├── spatio_camera/    # Skrip Edge AI Python (Stereo Depth OAK-D Lite & MJPEG Stream)
+└── docs/             # Dokumentasi, Prototipe HTML awal, dan Handoff
+```
 
-## Installation
+---
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/IqbaltopG/SpontaneosCombustion_Volumetric3D-and-sensor
-   cd kic_kideco_3dvolumetrik_oakDlite
-   ```
+##  1. Setup & Menjalankan Dashboard (Tim UI/Web)
 
-2. Create a virtual environment and install dependencies:
-   ```bash
-   python -m venv kic_env
-   source kic_env/bin/activate
-   pip install -r requirements.txt
-   ```
+Dashboard dibangun menggunakan **Vite + React + TailwindCSS v4** untuk performa yang sangat cepat, serta dilengkapi dengan server **Express + Socket.io** untuk menerima data secara *real-time* dari alat IoT.
 
-## Usage
-
-### 1. Mock Simulation (Testing without Hardware)
-Run the script in mock mode to test the math and logic. The script will automatically cycle through a 40-second state machine: `Normal -> Excavator Activity -> Normal -> Swabakar Emergency`.
-
+### Instalasi Dependensi
+Pastikan Anda sudah menginstall [Node.js](https://nodejs.org/). Masuk ke dalam folder `dashboard` dan jalankan:
 ```bash
-python volumetric_core.py --mock
+cd dashboard
+npm install
 ```
 
-### 2. Live Hardware Mode (OAK-D Lite)
-1. Mount the OAK-D Lite securely facing your target area. Ensure it is completely rigid to prevent micro-tremors from ruining the baseline calculation.
-2. Run the script:
+### Menyalakan Dashboard
+Anda perlu menyalakan dua layanan (dapat menggunakan terminal yang berbeda):
+
+1. **Jalankan Backend WebSockets (Gateway):**
+   ```bash
+   node server.js
+   ```
+   *(Server akan berjalan di `http://localhost:3000`)*
+
+2. **Jalankan Front-End Web App:**
+   ```bash
+   npm run dev
+   ```
+   *(Buka browser Anda di `http://localhost:5173`)*
+
+---
+
+##  2. Fitur Simulasi Manual (Untuk Keperluan Demo / Rekaman Video)
+
+Karena sensor suhu dan gas keras (*hardware*) sesungguhnya mungkin belum dipasang pada tahap ini, tersedia panel **Remote Control Rahasia** untuk memanipulasi *Dashboard* secara instan saat pengambilan video progres 50%.
+
+1. Pastikan `node server.js` sedang menyala.
+2. Buka *Dashboard* utama di laptop untuk direkam (`http://localhost:5173`).
+3. Buka HP Anda atau tab browser baru, lalu akses URL:
+   >>> **`http://localhost:3000/control`** *(Ganti localhost dengan IP Laptop Anda jika menggunakan HP)*
+4. Aktifkan *toggle* **"Mode Override"** di panel tersebut.
+5. Geser *slider* Suhu dan Gas CO sesuka Anda. Layar *Dashboard* utama akan secara ajaib berubah dan membunyikan alarm visual jika menyentuh batas kritis, meskipun kamera fisik sedang mati!
+
+*Fitur ini sangat berguna untuk mendemonstrasikan respon UI saat bahaya swabakar terjadi tanpa perlu membakar batu bara sungguhan.*
+
+---
+
+##  3. Setup & Menjalankan OAK-D Lite (Tim Hardware/AI)
+
+Skrip inti pemrosesan 3D stereovision dan fusi sensor yang akan ditanam ke Raspberry Pi (Headless Edge Architecture). Skrip ini sekarang telah dilengkapi dengan server **Flask** bawaan untuk mengirim *Livestream Video MJPEG* langsung ke Web!
+
+### Instalasi Dependensi
+Pastikan [Python 3](https://www.python.org/) terpasang. Disarankan menggunakan *Virtual Environment*.
 ```bash
-python volumetric_core.py
-```
-3. The camera will take 2 seconds to adjust exposure, capture the 3D baseline, and immediately begin monitoring for subsidence. 
+cd spatio_camera
+python3 -m venv venv
 
-## Data Output Format
-The system outputs a continuous JSON stream to `stdout`, ready to be ingested by a backend dashboard:
+# Aktivasi Environment (Linux/Mac)
+source venv/bin/activate
+# Aktivasi Environment (Windows)
+# venv\Scripts\activate
 
-```json
-{
-  "timestamp": "2026-06-13T21:40:00",
-  "status": "CRITICAL_SWABAKAR",
-  "confidence": "HIGH (Volume + Temp + CO)",
-  "volume_loss_detected": true,
-  "max_subsidence_mm": 110.5,
-  "mock_sensors": {
-    "temperature_c": 85.2,
-    "co_ppm": 712.4
-  }
-}
+pip install -r requirements.txt
 ```
+
+### Menjalankan Skrip Kamera
+Anda bisa mengirimkan data sekaligus menyiarkan video langsung ke *dashboard* web yang sedang menyala.
+
+**A. Mode Hardware (Jika OAK-D Lite sudah dicolok):**
+```bash
+python volumetric_core.py --endpoint http://localhost:3000/api/data
+```
+*(Video Livestream akan otomatis tayang di `http://localhost:5000/video_feed` dan ditangkap oleh Dashboard)*
+
+**B. Mode Simulasi (Mock Data tanpa Kamera - Untuk Testing UI):**
+```bash
+python volumetric_core.py --mock --endpoint http://localhost:3000/api/data
+```
+
+*(Catatan Penting: Jika dijalankan dari Raspberry Pi/komputer yang berbeda, ganti `localhost` dengan IP komputer yang menjalankan Node.js)*
+
+---
+
+##  Troubleshooting & Catatan Penting
+- **Kamera Offline di UI**: Jika *dashboard* menampilkan teks "Kamera Offline" berwarna abu-abu pada bagian Deformasi Permukaan, itu wajar. Artinya *script* `volumetric_core.py` belum menyala atau koneksi jaringan ke perangkat OAK-D terputus.
+- **Port Bentrok (Port in Use)**: Pastikan tidak ada aplikasi lain yang menggunakan `port 3000` (Node.js), `port 5000` (Flask Kamera), dan `port 5173` (Vite UI).
+- **Kolaborasi Git**: Tim Dashboard fokus di folder `dashboard/`. Tim AI/Kamera fokus di `spatio_camera/`. Biasakan untuk selalu melakukan `git pull` sebelum memulai pekerjaan.
+
+---
+*© 2026 Tim clingak clinguk ITK - Karya diikutsertakan untuk Kideco Innovation Challenge.*
