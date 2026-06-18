@@ -174,6 +174,8 @@ def main():
         baseline_depth_map = inDepth.getFrame().astype(np.float32)
         
     print("✅ Baseline set. Monitoring for Volume Loss (Subsidence)...")
+    
+    current_rgb_frame = None
 
     try:
         while True:
@@ -207,8 +209,6 @@ def main():
                 inRgb = rgb_queue.tryGet()
                 if inRgb is not None:
                     current_rgb_frame = inRgb.getCvFrame()
-                else:
-                    current_rgb_frame = None
 
             # 2. Differential Processing
             max_depth_mm = 1500.0
