@@ -88,7 +88,11 @@ def create_depthai_pipeline():
     monoRight.setBoardSocket(dai.CameraBoardSocket.CAM_C)
     monoRight.setFps(5) 
 
-    depth.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
+    depth.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
+    depth.initialConfig.setMedianFilter(dai.MedianFilter.KERNEL_7x7)
+    depth.setLeftRightCheck(True)
+    depth.setExtendedDisparity(True) # True for closer minimum distance
+    depth.setSubpixel(True) # True for better accuracy on smooth surfaces
     depth.setDepthAlign(dai.CameraBoardSocket.CAM_B)
 
     monoLeft.out.link(depth.left)
