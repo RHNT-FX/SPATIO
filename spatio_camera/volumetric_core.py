@@ -196,28 +196,15 @@ def main():
                 cv2.drawContours(mask, valid_contours, -1, 255, thickness=cv2.FILLED)
                 max_subsidence = np.max(diff_map_smoothed[mask == 255])
             
-            # 4. Sensor Fusion
-            temp_c = 35.0 + np.random.uniform(-1, 1)
-            co_ppm = 120.0 + np.random.uniform(-5, 5)
-            status_text = "NORMAL"
+            # 4. Sensor Fusion (Hardware sensors not yet available)
+            temp_c = 32.0
+            co_ppm = 45.0
+            status_text = "NORMAL_STABLE"
             confidence = "N/A"
 
             if volume_loss_detected:
-                if args.mock:
-                    if is_swabakar:
-                        temp_c += 50.0 
-                        co_ppm += 600.0
-                else:
-                    if np.random.random() > 0.5:
-                        temp_c += 50.0 + np.random.uniform(5, 15)
-                        co_ppm += 600.0 + np.random.uniform(50, 100)
-
-                if temp_c > 60.0 and co_ppm > 400.0:
-                    status_text = "CRITICAL_SWABAKAR"
-                    confidence = "HIGH (Volume + Temp + CO)"
-                else:
-                    status_text = "OPERATIONAL_ACTIVITY"
-                    confidence = "LOW (Volume loss only, no heat/gas)"
+                status_text = "WARNING_DEFORMATION"
+                confidence = "LOW (Volume loss only, no heat/gas)"
 
             # 5. Data Serialization
             payload = {
