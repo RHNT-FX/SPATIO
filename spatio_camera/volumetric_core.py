@@ -92,11 +92,11 @@ def create_depthai_pipeline():
     xoutRgb.setStreamName("rgb")
     camRgb.setBoardSocket(dai.CameraBoardSocket.CAM_A)
     camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+    camRgb.setPreviewSize(640, 480)
     camRgb.setFps(5)
-    camRgb.setIspScale(1, 3) 
     camRgb.setInterleaved(False)
     camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-    camRgb.isp.link(xoutRgb.input)
+    camRgb.preview.link(xoutRgb.input)
 
     return pipeline
 
@@ -184,7 +184,7 @@ def main():
             else:
                 inDepth = depth_queue.get()
                 current_depth_map = inDepth.getFrame().astype(np.float32)
-                inRgb = rgb_queue.tryGet()
+                inRgb = rgb_queue.get()
                 if inRgb is not None:
                     current_rgb_frame = inRgb.getCvFrame()
                 else:
