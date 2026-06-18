@@ -79,6 +79,17 @@ io.on('connection', (socket) => {
         io.emit('telemetry', dummyData);
     }
   });
+
+  socket.on('reset_baseline', async () => {
+    try {
+      const response = await fetch('http://localhost:5000/reset_baseline', { method: 'POST' });
+      if (response.ok) {
+        console.log("Successfully sent reset_baseline to Python");
+      }
+    } catch (e) {
+      console.error("Failed to forward reset_baseline to Python:", e.message);
+    }
+  });
 });
 
 // Serve the Remote Control Panel HTML

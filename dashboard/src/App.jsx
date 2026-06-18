@@ -6,7 +6,11 @@ function App() {
   const [currentTemp, setCurrentTemp] = useState(28.0);
   const [coGas, setCoGas] = useState(0);
   const [deformation, setDeformation] = useState(0.0);
+  const [volumeLossDetected, setVolumeLossDetected] = useState(false);
   const [aiStatus, setAiStatus] = useState("Menunggu Data...");
+
+  // Save socket instance for emitting events
+  const [socketInstance, setSocketInstance] = useState(null);
 
   // State for camera view mode
   const [currentView, setCurrentView] = useState('heatmap');
@@ -15,6 +19,7 @@ function App() {
   // Connect to the Node.js backend to receive OAK-D Lite telemetry
   useEffect(() => {
     const socket = io('http://localhost:3000');
+    setSocketInstance(socket);
 
     socket.on('connect', () => {
       setIsConnected(true);
@@ -34,6 +39,9 @@ function App() {
       if (data.max_subsidence_mm !== undefined) {
         setDeformation(data.max_subsidence_mm);
       }
+      if (data.volume_loss_detected !== undefined) {
+        setVolumeLossDetected(data.volume_loss_detected);
+      }
       if (data.status) {
         setAiStatus(data.status.replace('_', ' '));
       }
@@ -44,6 +52,7 @@ function App() {
 
   // Determine Risk Level based on Sensor Data
   const riskLevel = currentTemp < 45 ? 0 : currentTemp < 75 ? 1 : 2;
+  const showResetPrompt = volumeLossDetected && riskLevel === 0;
   
   // Clean, professional alert styling
   const riskClasses = [
@@ -175,6 +184,33 @@ function App() {
                 </div>
               </div>
             </div>
+            
+            {/* Operational Activity Prompt (Reset Baseline) */}
+            {showResetPrompt && (
+              <div className="mt-2 p-4 bg-indigo-50 border border-indigo-200 rounded-xl flex flex-col xl:flex-row items-start xl:items-center gap-4 animate-fade-in-up">
+                <div className="flex-grow">
+                  <h4 className="text-sm font-bold text-indigo-800 flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Aktivitas Operasional Terdeteksi?
+                  </h4>
+                  <p className="text-xs text-indigo-600 mt-1 leading-relaxed">
+                    Sistem mendeteksi adanya volume yang hilang, namun Suhu & Gas terpantau <strong>Normal</strong>. Jika ini adalah aktivitas pengerukan ekskavator/truk, klik tombol di samping untuk menyesuaikan acuan kedalaman agar sistem tidak salah mendeteksi deformasi ini.
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    if (socketInstance) {
+                      socketInstance.emit('reset_baseline');
+                      setVolumeLossDetected(false); // Optimistic UI update
+                      setDeformation(0.0);
+                    }
+                  }}
+                  className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition-colors shadow-sm w-full xl:w-auto"
+                >
+                  Sesuaikan Baseline
+                </button>
+              </div>
+            )}
           </div>
         </section>
 

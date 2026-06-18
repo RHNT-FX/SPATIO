@@ -56,6 +56,14 @@ def video_feed():
 def video_feed_rgb():
     return Response(generate_rgb_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+global_should_reset_baseline = False
+
+@app.route('/reset_baseline', methods=['POST'])
+def reset_baseline():
+    global global_should_reset_baseline
+    global_should_reset_baseline = True
+    return {"status": "ok", "message": "Baseline reset requested"}
+
 # --- Edge AI Core Logic ---
 def generate_mock_depth_map(base_depth=800, noise_level=5, shape=(400, 640)):
     """Generates a noisy flat surface depth map."""
@@ -156,7 +164,8 @@ def main():
     if args.mock:
         baseline_depth_map = generate_mock_depth_map(shape=frame_shape)
     else:
-        time.sleep(2)
+        print("⏳ Menunggu 10 detik untuk stabilisasi sensor dan auto-fokus...")
+        time.sleep(10)
         inDepth = depth_queue.get()
         baseline_depth_map = inDepth.getFrame().astype(np.float32)
         
@@ -166,6 +175,13 @@ def main():
         while True:
             current_time = time.time()
             is_swabakar = False
+
+            global global_should_reset_baseline
+            if global_should_reset_baseline:
+                print("🔄 Resetting baseline as requested by dashboard...")
+                if 'current_depth_map' in locals():
+                    baseline_depth_map = current_depth_map.copy()
+                global_should_reset_baseline = False
 
             # 1. Get Real-time Depth Map
             if args.mock:
