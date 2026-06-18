@@ -16,7 +16,9 @@ except ImportError:
 # --- Flask Server Setup for MJPEG Streaming ---
 app = Flask(__name__)
 global_frame = None
+global_rgb_frame = None
 frame_lock = threading.Lock()
+rgb_lock = threading.Lock()
 
 def generate_frames():
     global global_frame
@@ -32,9 +34,26 @@ def generate_frames():
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
         time.sleep(0.05) # Limit to ~20 fps to save CPU
 
+def generate_rgb_frames():
+    global global_rgb_frame
+    while True:
+        with rgb_lock:
+            if global_rgb_frame is None:
+                continue
+            ret, buffer = cv2.imencode('.jpg', global_rgb_frame)
+            frame = buffer.tobytes()
+            
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        time.sleep(0.05)
+
 @app.route('/video_feed')
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/video_feed_rgb')
+def video_feed_rgb():
+    return Response(generate_rgb_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 # --- Edge AI Core Logic ---
 def generate_mock_depth_map(base_depth=800, noise_level=5, shape=(400, 640)):
@@ -244,6 +263,9 @@ def main():
 
             with frame_lock:
                 global_frame = heatmap.copy()
+            if not args.mock and current_rgb_frame is not None:
+                with rgb_lock:
+                    global_rgb_frame = current_rgb_frame.copy()
 
             # 7. Local Visual Mode
             if args.visual:

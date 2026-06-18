@@ -213,11 +213,12 @@ function App() {
             {/* Video Livestream Player */}
             <div className="relative w-full aspect-video bg-black rounded-xl flex flex-col items-center justify-center overflow-hidden shadow-inner">
                 
-                {currentView === 'heatmap' ? (
+                {currentView === 'heatmap' || currentView === 'normal' ? (
                   <>
                     {isConnected ? (
                       <img 
-                        src="http://localhost:5000/video_feed" 
+                        key={currentView}
+                        src={currentView === 'heatmap' ? "http://localhost:5000/video_feed" : "http://localhost:5000/video_feed_rgb"} 
                         alt="OAK-D Live Stream" 
                         className="w-full h-full object-contain"
                         onError={(e) => {
