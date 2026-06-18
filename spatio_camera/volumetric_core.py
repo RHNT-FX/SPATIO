@@ -23,28 +23,29 @@ rgb_lock = threading.Lock()
 def generate_frames():
     global global_frame
     while True:
+        frame_to_yield = None
         with frame_lock:
-            if global_frame is None:
-                continue
-            # Encode frame
-            ret, buffer = cv2.imencode('.jpg', global_frame)
-            frame = buffer.tobytes()
-            
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            if global_frame is not None:
+                ret, buffer = cv2.imencode('.jpg', global_frame)
+                frame_to_yield = buffer.tobytes()
+                
+        if frame_to_yield is not None:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_to_yield + b'\r\n')
         time.sleep(0.05) # Limit to ~20 fps to save CPU
 
 def generate_rgb_frames():
     global global_rgb_frame
     while True:
+        frame_to_yield = None
         with rgb_lock:
-            if global_rgb_frame is None:
-                continue
-            ret, buffer = cv2.imencode('.jpg', global_rgb_frame)
-            frame = buffer.tobytes()
-            
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            if global_rgb_frame is not None:
+                ret, buffer = cv2.imencode('.jpg', global_rgb_frame)
+                frame_to_yield = buffer.tobytes()
+                
+        if frame_to_yield is not None:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame_to_yield + b'\r\n')
         time.sleep(0.05)
 
 @app.route('/video_feed')
