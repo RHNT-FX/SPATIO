@@ -93,7 +93,7 @@ def create_depthai_pipeline():
     depth.setLeftRightCheck(True)
     depth.setExtendedDisparity(True) # True for closer minimum distance
     depth.setSubpixel(True) # True for better accuracy on smooth surfaces
-    depth.setDepthAlign(dai.CameraBoardSocket.CAM_B)
+    depth.setDepthAlign(dai.CameraBoardSocket.CAM_A)
 
     monoLeft.out.link(depth.left)
     monoRight.out.link(depth.right)
@@ -284,9 +284,26 @@ def main():
 
             with frame_lock:
                 global_frame = heatmap.copy()
+            
             if not args.mock and current_rgb_frame is not None:
+                rgb_annotated = current_rgb_frame.copy()
+                
+                if volume_loss_detected:
+                    for cnt in valid_contours:
+                        x, y, w, h = cv2.boundingRect(cnt)
+                        cv2.rectangle(rgb_annotated, (x, y), (x+w, y+h), color, 3)
+                        
+                        box_label = "WARNING AMBLESAN"
+                        cv2.putText(rgb_annotated, box_label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                        
+                        # Draw crosshair
+                        cx, cy = x + w//2, y + h//2
+                        cv2.drawMarker(rgb_annotated, (cx, cy), color, cv2.MARKER_CROSS, 20, 2)
+
+                cv2.putText(rgb_annotated, f"OAK-D RGB: {status_text}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+
                 with rgb_lock:
-                    global_rgb_frame = current_rgb_frame.copy()
+                    global_rgb_frame = rgb_annotated
 
             # 7. Local Visual Mode
             if args.visual:
