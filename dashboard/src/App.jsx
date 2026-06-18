@@ -51,7 +51,12 @@ function App() {
   }, []);
 
   // Determine Risk Level based on Sensor Data
-  const riskLevel = currentTemp < 45 ? 0 : currentTemp < 75 ? 1 : 2;
+  let riskLevel = 0;
+  if (currentTemp >= 75 || coGas >= 100) {
+    riskLevel = 2; // Critical
+  } else if (currentTemp >= 45 || coGas >= 35) {
+    riskLevel = 1; // Warning
+  }
   const showResetPrompt = volumeLossDetected && riskLevel === 0;
   
   // Clean, professional alert styling
@@ -273,15 +278,61 @@ function App() {
                       <p className="text-slate-500 text-xs mt-1">Pastikan skrip Python Edge AI sedang berjalan</p>
                     </div>
                   </>
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800">
-                    <svg className="w-16 h-16 text-slate-600 mb-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                    </svg>
-                    <h3 className="text-xl font-bold text-slate-300 mb-2">Dalam Tahap Pengembangan</h3>
-                    <p className="text-sm text-slate-500 max-w-sm text-center">
-                        Modul visualisasi <strong>{currentView === 'normal' ? 'Kamera Normal' : currentView === 'thermal' ? 'Sensor Termal' : 'Peta 3D Volumetrik'}</strong> saat ini masih berupa purwarupa (placeholder). Belum ada data hardware.
+                ) : currentView === 'thermal' ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden bg-slate-900">
+                    <div className="absolute inset-0 opacity-60 bg-cover bg-center transition-all duration-1000 mix-blend-screen" style={{ backgroundImage: 'url(/thermal_bg.jpg)' }}></div>
+                    <div className="absolute top-0 left-0 w-full h-1 bg-white/60 shadow-[0_0_20px_rgba(255,255,255,1)] animate-bounce" style={{ animationDuration: '4s' }}></div>
+                    
+                    <div className="relative border-2 border-white/20 w-48 h-48 rounded-full flex items-center justify-center">
+                      <div className="absolute w-full h-[1px] bg-white/10"></div>
+                      <div className="absolute h-full w-[1px] bg-white/10"></div>
+                      <svg className="w-12 h-12 text-white/80 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      </svg>
+                    </div>
+                    
+                    <h3 className="relative text-xl font-bold text-white mt-6 tracking-wider drop-shadow-md">MODUL SENSOR TERMAL</h3>
+                    <p className="relative text-xs text-white/80 mt-2 text-center max-w-sm drop-shadow-md">
+                      [ UI SIMULASI - MENUNGGU HARDWARE ]<br/>
+                      Siap dihubungkan dengan kamera FLIR/Lepton.
                     </p>
+                    
+                    <div className="absolute bottom-6 right-6 flex flex-col gap-1 text-right font-mono drop-shadow-md">
+                       <span className="text-yellow-300 text-xs font-bold">MAX: 72.4°C</span>
+                       <span className="text-orange-300 text-xs font-bold">AVG: 45.1°C</span>
+                       <span className="text-rose-300 text-xs font-bold">MIN: 28.3°C</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden bg-slate-900" style={{ perspective: '1000px' }}>
+                    <div className="absolute inset-0 opacity-50 bg-cover bg-center mix-blend-screen" style={{ backgroundImage: 'url(/3d_bg.jpg)' }}></div>
+                    <div className="absolute inset-0 opacity-20" style={{ 
+                      backgroundImage: 'linear-gradient(rgba(56, 189, 248, 0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(56, 189, 248, 0.4) 1px, transparent 1px)', 
+                      backgroundSize: '40px 40px',
+                      transform: 'rotateX(60deg) translateY(-50px) translateZ(-100px)',
+                      transformOrigin: 'top center'
+                    }}></div>
+                    
+                    <div className="relative animate-bounce mb-8" style={{ animationDuration: '2s' }}>
+                      <svg className="w-24 h-24 text-sky-400 drop-shadow-[0_0_15px_rgba(56,189,248,0.6)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                         <path strokeLinecap="round" strokeLinejoin="round" d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                         <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                         <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                      </svg>
+                    </div>
+
+                    <h3 className="relative text-xl font-bold text-sky-400 tracking-widest font-mono drop-shadow-md">PETA 3D VOLUMETRIK</h3>
+                    <p className="relative text-xs text-sky-200/80 mt-3 text-center max-w-sm font-mono drop-shadow-md">
+                      RENDERING POINT CLOUD...<br/>
+                      <span className="animate-pulse">Memuat engine WebGL 3D Spatial...</span>
+                    </p>
+                    
+                    <div className="absolute top-6 left-6 flex flex-col gap-1 text-left font-mono text-[10px] drop-shadow-md">
+                       <span className="text-sky-400">VERTICES: 1,420,392</span>
+                       <span className="text-sky-400">FACES: 2,840,780</span>
+                       <span className="text-sky-400">ENGINE: VITE/THREE.JS</span>
+                    </div>
                   </div>
                 )}
 
