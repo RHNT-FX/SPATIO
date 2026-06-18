@@ -9,7 +9,7 @@ function App() {
   const [aiStatus, setAiStatus] = useState("Menunggu Data...");
 
   // State for camera view mode
-  const [currentView, setCurrentView] = useState('normal');
+  const [currentView, setCurrentView] = useState('heatmap');
   const [isConnected, setIsConnected] = useState(false);
 
   // Connect to the Node.js backend to receive OAK-D Lite telemetry
@@ -190,9 +190,10 @@ function App() {
               
               <div className="flex bg-slate-100 p-1 rounded-lg">
                 {[
-                  { id: 'normal', label: 'RGB Visual' },
-                  { id: 'thermal', label: 'Sensor Thermal' },
-                  { id: 'spatial', label: 'Peta 3D (Depth)' }
+                  { id: 'heatmap', label: 'Heatmap Kedalaman' },
+                  { id: 'normal', label: 'Kamera Normal' },
+                  { id: 'thermal', label: 'Sensor Termal' },
+                  { id: '3d', label: 'Peta 3D' }
                 ].map(tab => (
                   <button 
                     key={tab.id} 
@@ -212,26 +213,40 @@ function App() {
             {/* Video Livestream Player */}
             <div className="relative w-full aspect-video bg-black rounded-xl flex flex-col items-center justify-center overflow-hidden shadow-inner">
                 
-                {isConnected ? (
-                  <img 
-                    src="http://localhost:5000/video_feed" 
-                    alt="OAK-D Live Stream" 
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
-                  />
-                ) : null}
+                {currentView === 'heatmap' ? (
+                  <>
+                    {isConnected ? (
+                      <img 
+                        src="http://localhost:5000/video_feed" 
+                        alt="OAK-D Live Stream" 
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
 
-                {/* Fallback Error / Placeholder */}
-                <div className={`absolute inset-0 flex flex-col items-center justify-center bg-slate-900 ${isConnected ? 'hidden' : 'flex'}`}>
-                  <svg className="w-12 h-12 text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path>
-                  </svg>
-                  <p className="text-slate-400 text-sm font-medium">Video Stream Offline</p>
-                  <p className="text-slate-500 text-xs mt-1">Pastikan skrip Python Edge AI sedang berjalan</p>
-                </div>
+                    {/* Fallback Error / Placeholder */}
+                    <div className={`absolute inset-0 flex flex-col items-center justify-center bg-slate-900 ${isConnected ? 'hidden' : 'flex'}`}>
+                      <svg className="w-12 h-12 text-slate-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path>
+                      </svg>
+                      <p className="text-slate-400 text-sm font-medium">Video Stream Offline</p>
+                      <p className="text-slate-500 text-xs mt-1">Pastikan skrip Python Edge AI sedang berjalan</p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800">
+                    <svg className="w-16 h-16 text-slate-600 mb-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                    <h3 className="text-xl font-bold text-slate-300 mb-2">Dalam Tahap Pengembangan</h3>
+                    <p className="text-sm text-slate-500 max-w-sm text-center">
+                        Modul visualisasi <strong>{currentView === 'normal' ? 'Kamera Normal' : currentView === 'thermal' ? 'Sensor Termal' : 'Peta 3D Volumetrik'}</strong> saat ini masih berupa purwarupa (placeholder). Belum ada data hardware.
+                    </p>
+                  </div>
+                )}
 
                 {/* Status Overlay */}
                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur border border-slate-200 px-3 py-1.5 rounded-md text-xs font-medium text-slate-700 flex items-center gap-2 shadow-md">
