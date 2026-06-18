@@ -114,6 +114,7 @@ def create_depthai_pipeline():
 
 def main():
     global global_frame
+    global global_rgb_frame
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--mock', action='store_true', help="Run with mock data instead of real OAK-D Lite")
@@ -206,7 +207,7 @@ def main():
             else:
                 inDepth = depth_queue.get()
                 current_depth_map = inDepth.getFrame().astype(np.float32)
-                inRgb = rgb_queue.tryGet()
+                inRgb = rgb_queue.get()
                 if inRgb is not None:
                     current_rgb_frame = inRgb.getCvFrame()
 
